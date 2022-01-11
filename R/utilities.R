@@ -90,8 +90,8 @@ tr_r_function <- function(rvec, ndim, i) {
   l <- t(chol(R))
   angmat <- matrix(1,ncol = ndim,nrow=ndim)
   angmat[-1,1] <- acos(l[-1,1])
-  for (j in 2:(J-1)){
-    sinprod <- apply(sin(angmat[, seq_len(j-1), drop=F]), 1, prod) ## denominator in division
+  for (j in 2:(ndim-1)){
+    sinprod <- apply(sin(angmat[, seq_len(j-1), drop=FALSE]), 1, prod) ## denominator in division
     angmat[-(1:j),j]<-acos((l/sinprod)[-(1:j),j])
   }
   angdivpi <- angmat[lower.tri(angmat)]/pi

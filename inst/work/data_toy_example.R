@@ -14,7 +14,7 @@ fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3", data = data_toy,
           control = mvordnorm.control(se = TRUE, solver = "CG"))
 
 print.mvordnorm(fit)
-summary(fit)
+summary.mvordnorm(fit)
 
 ###### Compare estimates
 beta <- c(2, 0, -2)

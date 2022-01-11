@@ -184,8 +184,9 @@ print.mvordnorm <- function(x, call = FALSE, ...) {
 #' @export
 summary.mvordnorm <- function(object, call = FALSE, ...)
   {
-   mat <- cbind.data.frame(c("nunits", nrow(object$y), c("ndim", ncol(object$y)),
-                           c("logLik", round(-object$res$value,2))))
+   mat <- cbind.data.frame(c("nunits", nrow(object$y)),
+                             c("ndim", ncol(object$y)),
+                           c("logLik", round(-object$res$value,2)))
    pars <- object$parameters
    cf <- unlist(object$parameters)
    if (is.null(object$vcov)) {
@@ -194,10 +195,7 @@ summary.mvordnorm <- function(object, call = FALSE, ...)
      se <- sqrt(diag(object$vcov))
    }
    cf <- cbind(cf, se, cf/se, 2 * pnorm(-abs(cf/se)))
-#   cf[cf[, 2] == 0, 3] <- NA
-#   cf[cf[, 2] == 0, 4] <- NA
    colnames(cf) <- c("Estimate", "Std. Error", "z value", "Pr(>|z|)")
-#
    summary.output <- list()
    summary.output$formula <- object$formula
 #   ## ------------------------
@@ -209,7 +207,8 @@ summary.mvordnorm <- function(object, call = FALSE, ...)
    if(call){
      summary.output$call <- object$call
      cat("\nCall: ",
-         paste(deparse(object$call, width.cutoff = getOption("deparse.cutoff")), sep = "\n", collapse = "\n"),
+         paste(deparse(object$call, width.cutoff = getOption("deparse.cutoff")),
+               sep = "\n", collapse = "\n"),
          "\n\n", sep = "")
    }
    ## ------------------------
