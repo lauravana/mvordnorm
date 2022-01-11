@@ -15,7 +15,6 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   obj <- list()
 
   start_values <- make_start_values(y, X, response_types)
-
   ## Optimize negative log likelihood
   obj$res <- optimx(start_values, function(par)
     neg_log_lik_joint(par, response_types,
@@ -38,21 +37,22 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   beta0n <- tpar[sum(ntheta) + seq_len(ndimn)] # we need intercepts for the normal variables
   names(beta0n)   <- paste0("beta0.", ynames[idn])
   ## common regression coefs
-  beta <- tpar[sum(ntheta) + ndimn + seq_len(p)]
-  names(beta)   <- colnames(X)
+  beta <- tpar[sum(ntheta) + ndimn + seq_len(ndim * p)]
+
+  names(beta)  <-  c(outer(ynames, colnames(X), paste0))
   ## sd parameters for normals
-  tsigman <- tpar[sum(ntheta) + ndimn + p + seq_len(ndimn)]
+  tsigman <- tpar[sum(ntheta) + ndimn + ndim * p + seq_len(ndimn)]
   sigman <- exp(tsigman)
   names(sigman)   <- paste0("sigma.", ynames[idn])
   ## correlations error structure
-  tparerror <- tpar[(sum(ntheta) + ndimn + p + ndimn + seq_len(ndim * (ndim - 1)/2))]
+  tparerror <- tpar[(sum(ntheta) + ndimn + ndim * p + ndimn + seq_len(ndim * (ndim - 1)/2))]
   rvec <- transf_sigma(tparerror, ndim)
   names(rvec) <-
     apply(combn(ndim,2), 2,function(x)
     sprintf("corr_%s_%s", ynames[x[1]], ynames[x[2]]))
 
 
-  obj$parameters <- list(thetas, beta0n,beta,  sigman, rvec)
+  obj$parameters <- list(thetas, beta0n, beta,  sigman, rvec)
 
   ## Standard errors
   if (control$se) {
@@ -66,9 +66,9 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     jac_list <- jac_dttheta_dtheta_flexible(thetas,
                                         ndimo, ntheta) ## d ttheta/d theta
     jac_list[ndimo + seq_len(ndimn)] <- 1 ## d tbeta0/dbeta0
-    jac_list[ndim + seq_len(p)] <- 1 ## d tbeta/dbeta
-    jac_list[[ndim + p + 1]] <- diag(1/sigman) ## d tsigma/dsigma
-    jac_list[[ndim + p + 2]]<- jac_dtr_dr(rvec, ndim) # d tr/dr
+    jac_list[ndim + seq_len(ndim * p)] <- 1 ## d tbeta/dbeta
+    jac_list[[ndim + ndim * p + 1]] <- diag(1/sigman) ## d tsigma/dsigma
+    jac_list[[ndim + ndim * p + 2]]<- jac_dtr_dr(rvec, ndim) # d tr/dr
 
     J <- as.matrix(Matrix::bdiag(jac_list))
     J.inv <- solve(J)
@@ -111,25 +111,27 @@ neg_log_lik_joint <- function(pars, response_types, y, X,
   ## regression coefs: intercepts for normals
   beta0n <- pars[sum(ntheta) + seq_len(ndimn)] # we need intercepts for the normal variables
   ## coomon regression coefs
-  beta <- pars[sum(ntheta) + ndimn + 1:p]
+  beta <- pars[sum(ntheta) + ndimn + seq_len(ndim * p)]
   ## sd parameters for normals
-  sigman <- exp(pars[sum(ntheta) + ndimn + p + seq_len(ndimn)])
+  sigman <- exp(pars[sum(ntheta) + ndimn + ndim * p + seq_len(ndimn)])
   ## correlations error structure
-  tparerror <- pars[(sum(ntheta) + ndimn + p + ndimn + seq_len(ndim * (ndim - 1)/2))]
+  tparerror <- pars[(sum(ntheta) + ndimn + ndim * p + ndimn + seq_len(ndim * (ndim - 1)/2))]
   rvec <- transf_sigma(tparerror, ndim)
 
+  beta_mat <- beta
+  dim(beta_mat) <- c(ndim, p)
 
-  Xbeta <- drop(X %*% beta)
+  Xbeta <- tcrossprod(X, beta_mat)
+
   eta_u_o <- lapply(1:ndimo, function(j)
-      c(thetas[[j]], 1e06)[y[, ido[j]]] - Xbeta)
+      c(thetas[[j]], 1e06)[y[, ido[j]]] - Xbeta[, ido[j]])
 
   eta_l_o <- lapply(1:ndimo, function(j)
-      drop(c(-1e06, thetas[[j]])[y[, ido[j]]] - Xbeta))
+      drop(c(-1e06, thetas[[j]])[y[, ido[j]]] - Xbeta[, ido[j]]))
 
-  eta_n <- lapply(1:ndimn, function(j)
-    beta0n[j] + Xbeta)
-
-
+  eta_n <- lapply(1:ndimn, function(j) {
+    beta0n[j] + Xbeta[, idn[j]]
+  } )
 
   log_pl_vec <- NULL
 
@@ -176,7 +178,7 @@ neg_log_lik_joint <- function(pars, response_types, y, X,
 
       sd_yn_cond <- sqrt(1 - r^2)
 
-      eta_cond <- Xbeta + r * (y[,kn] - eta_n[[knidn]]) / sigman[knidn]
+      eta_cond <-  Xbeta[,kn] + r * (y[,kn] - eta_n[[knidn]]) / sigman[knidn]
 
       eta_u_cond <- (c(thetas[[koido]],  1e06)[y[,ko]] - eta_cond)/sd_yn_cond
 
