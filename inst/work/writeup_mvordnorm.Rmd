@@ -1,0 +1,92 @@
+---
+title: "Writeup mvordnorm"
+output: html_document
+---
+
+# Model
+
+We propose a joint model of continuous and ordinal variables. Let's assume we 
+have $q_n$ continuous responses and $q_o$ ordinal responses (in total $q=q_n+q_o$).
+
+For the continuous variables $\boldsymbol y^n_{1},\ldots, \boldsymbol y^n_{q_n}$  have 
+$$
+y^n_{ij} = \beta_{0j} + \beta_j^\top x_i + \sigma_j \epsilon^n_{ij}
+$$
+For the ordinal variables  $\boldsymbol y^o_{1},\ldots, \boldsymbol y^o_{q_o}$ have 
+$$
+\tilde y^o_{ij} = \beta_j^\top x_i + \epsilon^o_{ij}
+$$
+$$
+y^o_{ij} = r \Rightarrow \theta_{j, r-1}\leq \tilde y^o_{ij}\leq \theta_{j, r}
+$$
+The jointness is captured by assuming that the continuous and the latent variables
+of the ordinals come from a multivariate normal distribution:
+$$
+(\boldsymbol\epsilon^o_{i}, \boldsymbol\epsilon^n_{ij})^\top \sim N(0, R)
+$$
+
+# Pairwise likelihood
+
+Assume we collect all $q$ responses in a matrix $Y$.
+The pairwise likelihood is given by:
+
+$$
+p\ell(\Theta; Y, X) =\sum_{i=1}^n \sum_{k,l} f(y_{ik}, y_{il})
+$$
+
+
+We have three cases:
+
+* both responses are ordinal
+
+* both responses are normal
+
+* one response is ordinal, one normal
+
+
+## Both responses are ordinal
+
+$$
+f(y_{ik}, y_{il}) = Pr(y_{ik}=r_{ik}, y_{il} = r_{il}) = \int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} \phi_2(\tilde y_{ik} - \beta_k^\top x_i, \tilde y_{il} - \beta_k^\top x_i; \rho_{kl}) d\tilde y_{ik}d\tilde y_{il} = 
+$$
+Let's denote by 
+$U_k = \theta_{k, r_{ik}} - \beta_k^\top x_i$ ,
+$L_k = \theta_{k, r_{ik}-1} - \beta_k^\top x_i$,
+$U_l = \theta_{k, r_{il}} - \beta_l^\top x_i$,
+$L_l = \theta_{k, r_{ik}-1} - \beta_l^\top x_i$. We then have the rectangular probability:
+$$
+=\Phi_2\left(U_k, U_l;  \rho_{kl} \right)-\Phi_2\left(L_k, U_l;  \rho_{kl} \right)-\Phi_2\left(U_k, L_l;  \rho_{kl} \right)
++\Phi_2\left(L_k, L_l;  \rho_{kl} \right)
+$$
+where $\rho_{kl}$ is the correlation coefficient between responses $k$ and $l$ and $\phi_2$ is
+the bivariate standard normal pdf and $\Phi_2$ is the bivariate standard normal cdf .
+
+## Both responses are continuous.
+
+$$
+f(y_{ik}, y_{il}) = \phi_2\left(\frac{y_{ik} - \beta_{0k} -\beta_k^\top x_i}{\sigma_k}, \frac{y_{il} - \beta_{0l} -\beta_l^\top x_i}{\sigma_l}; \rho_{kl}) \right)
+$$
+
+## One response is ordinal, one continuous.
+
+Slightly abusing notation we assume the $k$th response is ordinal and the $l$ th 
+is continuous.
+$$
+f(y^o_{ik}, y^n_{il}) = f(y^o_{ik} | y^n_{il})f(y^n_{il})
+$$
+where $f(y^n_{il})$ is the marginal standard normal pdf $\phi\left(\frac{y^n_{il} - \beta_{0l} -\beta_l^\top x_i}{\sigma_l} \right)$. 
+The conditional term is:
+$$
+f(y^o_{ik} | y^n_{il}) = Pr(y^o_{ik}=r_{ik} | y^n_{il}) = Pr(\theta_{k, r_{ik}-1}\leq \tilde y^o_{ik}\leq \theta_{k, r_{ik}} | y^n_{il})
+$$
+Given that $\tilde y^o_{ik}$ and $y^n_{il}$ are bivariate normals we have:
+
+$$
+\tilde y^o_{ik} | y^n_{il} \sim N\left(\underbrace{\beta_k^\top x_i + \frac{\rho_{kl}}{\sigma_l}(y^n_{il} - \beta_{0l} -\beta_l^\top x_i)}_{\mu_c}, \underbrace{(1 - \rho_{kl}^2) \sigma^2_l}_{\sigma_c^2}\right)
+$$
+So 
+$$
+f(y^o_{ik} | y^n_{il}) = Pr(\theta_{k, r_{ik}-1}\leq \tilde y^o_{ik}\leq \theta_{k, r_{ik}} | y^n_{il})=
+\int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} \phi\left(\frac{\tilde y_{ik} - \mu_c}{\sigma_c}\right) d\tilde y^o_{ik} = 
+\Phi\left(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}\right)-\Phi\left(\frac{\theta_{k, r_{ik}-1} - \mu_c}{\sigma_c}\right)
+$$
