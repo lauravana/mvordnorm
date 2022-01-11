@@ -66,7 +66,7 @@ make_start_values <- function(y, X, family_type) {
             # beta0 for normals
             colMeans(y[, family_type != "ordinal"]),
             # betas
-            rep(0, p),
+            rep(0, ndim * p),
             # sigmas for normals
             rep(0, sum(family_type != "ordinal")),
             # correlation params
