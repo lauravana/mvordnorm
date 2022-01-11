@@ -1,0 +1,11 @@
+TODOs
+
+* offsets
+* constraints on betas
+* constraints on thetas
+* logit link
+* different correlation structures - now only the general one is supported.
+* Missings
+* types of thresholds - now fix first zero.
+* Weights
+* implement checks for the columns - if types fits to response
