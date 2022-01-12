@@ -22,8 +22,10 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   ind_univ <- which(!is.na(y) & rowSums(!is.na(y)) == 1, arr.ind = TRUE)
   n_univ <- NROW(ind_univ)
   ## index for subjects containing pair c(k,l)
-  ind_kl <- apply(combis, 2, function(kl)
-    rowSums(!is.na(y[, kl])) == 2, simplify = FALSE)
+  ind_kl <- lapply(1:ncol(combis), function(j) {
+    kl <- combis[,j]
+    rowSums(!is.na(y[, kl])) == 2
+  })
 
   ind_i <- lapply(1:ncol(combis), function(h)  which(ind_kl[[h]]))
 
@@ -32,7 +34,7 @@ mvordnorm_fit <- function(y, X, # w,  offset,
          "ind_i" =  ind_i[[h]],
          "rpos" = h)
   })
-                  
+
   ## Optimize negative log likelihood
   obj$res <- optimx(start_values, function(par)
     neg_log_lik_joint(par, response_types,
