@@ -68,6 +68,17 @@ fit <- mvordnorm("y1 + z1 ~ 0 + X1 + X2 + X3", data = data_toy,
 print.mvordnorm(fit)
 summary.mvordnorm(fit)
 
+### binary instead of ordinal
+library("mvordnorm")
+data("data_toy", package = "mvordnorm")
+data_toy$y1[data_toy$y1 == 3] <- 2
+fit <- mvordnorm("y1 + y2 + z1 ~ 0 + X1 + X2 + X3", data = data_toy,
+                 response_types = c("ordinal", "ordinal","gaussian"),
+                 control = mvordnorm.control(se = TRUE, solver = "CG"))
+
+print.mvordnorm(fit)
+summary.mvordnorm(fit)
+
 ### With MISSINGS
 
 library("mvordnorm")

@@ -78,8 +78,11 @@ jac_dttheta_dtheta_flexible <- function(theta, ndimo, ntheta) {
   lapply(seq_len(ndimo), function(j){
     emat <- diag(ntheta[j])
     theta_j <- theta[cumsum(c(0, ntheta[seq_len(j-1)]))[j] + seq_len(ntheta[j])]
-    emat[2:ntheta[j], 1:(ntheta[j]-1)] <- -1
-    sweep(emat, 1, c(1, diff(theta_j)), "/")
+    if (dim(emat)[1] > 1) {
+      emat[2:ntheta[j], 1:(ntheta[j]-1)] <- -1
+      emat <- sweep(emat, 1, c(1, diff(theta_j)), "/")
+    }
+    emat
   })
 }
 
