@@ -14,7 +14,7 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   combis <- combn(ndim, 2)
   obj <- list()
 
-  start_values <- make_start_values(y, X, response_types)
+  start_values <- make_start_values(y, X, family_type = response_types)
   ## Optimize negative log likelihood
   obj$res <- optimx(start_values, function(par)
     neg_log_lik_joint(par, response_types,

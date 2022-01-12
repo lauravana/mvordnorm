@@ -64,7 +64,7 @@ make_start_values <- function(y, X, family_type) {
   p <- ncol(X)
   pars <- c(unlist(lapply(start_theta, function(x) c(x[1], log(diff(x))))),
             # beta0 for normals
-            colMeans(y[, family_type != "ordinal"]),
+            colMeans(y[, family_type != "ordinal", drop = FALSE]),
             # betas
             rep(0, ndim * p),
             # sigmas for normals
