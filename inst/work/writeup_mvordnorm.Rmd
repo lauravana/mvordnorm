@@ -82,11 +82,11 @@ $$
 Given that $\tilde y^o_{ik}$ and $y^n_{il}$ are bivariate normals we have:
 
 $$
-\tilde y^o_{ik} | y^n_{il} \sim N\left(\underbrace{\beta_k^\top x_i + \frac{\rho_{kl}}{\sigma_l}(y^n_{il} - \beta_{0l} -\beta_l^\top x_i)}_{\mu_c}, \underbrace{(1 - \rho_{kl}^2) \sigma^2_l}_{\sigma_c^2}\right)
+\tilde y^o_{ik} | y^n_{il} \sim N\left(\underbrace{\beta_k^\top x_i + \frac{\rho_{kl}}{\sigma_l}(y^n_{il} - \beta_{0l} -\beta_l^\top x_i)}_{\mu_c}, \underbrace{(1 - \rho_{kl}^2)}_{\sigma_c^2}\right)
 $$
 So 
 $$
 f(y^o_{ik} | y^n_{il}) = Pr(\theta_{k, r_{ik}-1}\leq \tilde y^o_{ik}\leq \theta_{k, r_{ik}} | y^n_{il})=
-\int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} \phi\left(\frac{\tilde y_{ik} - \mu_c}{\sigma_c}\right) d\tilde y^o_{ik} = 
+\int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} \phi\left(\frac{\tilde y^o_{ik} - \mu_c}{\sigma_c}\right) d\tilde y^o_{ik} = 
 \Phi\left(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}\right)-\Phi\left(\frac{\theta_{k, r_{ik}-1} - \mu_c}{\sigma_c}\right)
 $$
