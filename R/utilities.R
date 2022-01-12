@@ -40,21 +40,6 @@ rectbiv_norm_prob <- function(U, L, r) {
 
 
 
-backtransf_sigmas <- function(R){
-  J <- nrow(R)
-  l <- t(chol(R))
-  angmat <- matrix(1,ncol=J,nrow=J)
-  angmat[-1,1] <- acos(l[-1,1])
-  for (j in 2:(J-1)){
-    sinprod <- apply(sin(angmat[, seq_len(j-1), drop=FALSE]), 1, prod) ## denominator in division
-    angmat[-(1:j),j]<-acos((l/sinprod)[-(1:j),j])
-  }
-  angdivpi <- angmat[lower.tri(angmat)]/pi
-  log(angdivpi/(1-angdivpi))
-}
-
-
-
 
 
 make_start_values <- function(y, X, family_type) {
@@ -79,7 +64,7 @@ jac_dttheta_dtheta_flexible <- function(theta, ndimo, ntheta) {
     emat <- diag(ntheta[j])
     theta_j <- theta[cumsum(c(0, ntheta[seq_len(j-1)]))[j] + seq_len(ntheta[j])]
     if (dim(emat)[1] > 1) {
-      emat[2:ntheta[j], 1:(ntheta[j]-1)] <- -1
+      emat[cbind(2:ntheta[j], 1:(ntheta[j]-1))] <- -1
       emat <- sweep(emat, 1, c(1, diff(theta_j)), "/")
     }
     emat
@@ -91,13 +76,17 @@ tr_r_function <- function(rvec, ndim, i) {
   R[lower.tri(R)] <- rvec
   R[upper.tri(R)] <- t(R)[upper.tri(R)]
   l <- t(chol(R))
-  angmat <- matrix(1,ncol = ndim,nrow=ndim)
+  angmat <- diag(ndim)
+
   angmat[-1,1] <- acos(l[-1,1])
-  for (j in 2:(ndim-1)){
-    sinprod <- apply(sin(angmat[, seq_len(j-1), drop=FALSE]), 1, prod) ## denominator in division
-    angmat[-(1:j),j]<-acos((l/sinprod)[-(1:j),j])
+  if (ndim > 2){
+    for (j in 2:(ndim-1)){
+      sinprod <- apply(sin(angmat[, seq_len(j-1), drop=FALSE]), 1, prod) ## denominator in division
+      angmat[-(1:j),j]<-acos((l/sinprod)[-(1:j),j])
+    }
   }
   angdivpi <- angmat[lower.tri(angmat)]/pi
+
   log(angdivpi/(1-angdivpi))[i]
 }
 

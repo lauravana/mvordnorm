@@ -8,6 +8,7 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   p <- ncol(X)
   idn <- which(response_types != "ordinal")
   ido <- which(response_types == "ordinal")
+
   ## number of thresholds
   ntheta <- apply(y[,response_types=="ordinal", drop = FALSE], 2,
                   function(x) nlevels(as.factor(x)) - 1)
@@ -32,7 +33,7 @@ mvordnorm_fit <- function(y, X, # w,  offset,
          "ind_i" =  ind_i[[h]],
          "rpos" = h)
   })
-                  
+
   ## Optimize negative log likelihood
   obj$res <- optimx(start_values, function(par)
     neg_log_lik_joint(par, response_types,
@@ -82,12 +83,15 @@ mvordnorm_fit <- function(y, X, # w,  offset,
                         p, ndimo, ndimn, ndim, combis, idn, ido,
                         combis_fast),
       obj$parOpt)
+
+   # diag(solve(tparHess))
+
     cat("Hessian: Done.\n")
     jac_list <- jac_dttheta_dtheta_flexible(thetas,
                                             ndimo, ntheta) ## d ttheta/d theta
     jac_list[ndimo + seq_len(ndimn)] <- 1 ## d tbeta0/dbeta0
     jac_list[ndim + seq_len(ndim * p)] <- 1 ## d tbeta/dbeta
-    jac_list[[ndim + ndim * p + 1]] <- diag(1/sigman) ## d tsigma/dsigma
+    jac_list[[ndim + ndim * p + 1]] <- diag(ndimn, x = 1/sigman) ## d tsigma/dsigma
     jac_list[[ndim + ndim * p + 2]]<- jac_dtr_dr(rvec, ndim) # d tr/dr
 
     J <- as.matrix(Matrix::bdiag(jac_list))
