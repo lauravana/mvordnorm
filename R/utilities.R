@@ -23,10 +23,10 @@ transf_sigma <- function(tpar, ndim) {
 
 rectbiv_norm_prob <- function(U, L, r) {
   # computes the rectangle probabilities for biv.normal-distribution
-  p1 <- pbivnorm(U[[1]], U[[2]], r)
-  p2 <- pbivnorm(L[[1]], U[[2]], r)
-  p3 <- pbivnorm(U[[1]], L[[2]], r)
-  p4 <- pbivnorm(L[[1]], L[[2]], r)
+  p1 <- pbivnorm(U[,1], U[,2], r)
+  p2 <- pbivnorm(L[,1], U[,2], r)
+  p3 <- pbivnorm(U[,1], L[,2], r)
+  p4 <- pbivnorm(L[,1], L[,2], r)
   ## replace NaN
   p1[is.nan(p1)] <- 0
   p2[is.nan(p2)] <- 0
