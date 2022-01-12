@@ -1,5 +1,5 @@
 mvordnorm_fit <- function(y, X, # w,  offset,
-                         response_types,  control) {
+                          response_types,  control) {
 
   ndimo <- sum(response_types == "ordinal")
   ndim <- ncol(y)
@@ -15,14 +15,34 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   obj <- list()
 
   start_values <- make_start_values(y, X, response_types)
+
+
+
+  ## Missings in y
+  ind_univ <- which(!is.na(y) & rowSums(!is.na(y)) == 1, arr.ind = TRUE)
+  n_univ <- NROW(ind_univ)
+  ## index for subjects containing pair c(k,l)
+  ind_kl <- apply(combis, 2, function(kl)
+    rowSums(!is.na(y[, kl])) == 2, simplify = FALSE)
+
+  ind_i <- lapply(1:ncol(combis), function(h)  which(ind_kl[[h]]))
+
+  combis_fast <- lapply(1:ncol(combis), function(h){
+    list("combis" = combis[,h],
+         "ind_i" =  ind_i[[h]],
+         "rpos" = h)
+  })
+
+
   ## Optimize negative log likelihood
   obj$res <- optimx(start_values, function(par)
     neg_log_lik_joint(par, response_types,
                       y, X, ntheta, p, ndimo, ndimn, ndim, combis,
-                      idn, ido),
-                    method = control$solver)
+                      idn, ido, combis_fast),
+    method = control$solver)
   ## TODO
   obj$parOpt <- unlist(obj$res[seq_along(start_values)])
+  obj$combis_fast <- combis_fast
 
   ## Finalize
   ynames <- names(y)
@@ -49,7 +69,7 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   rvec <- transf_sigma(tparerror, ndim)
   names(rvec) <-
     apply(combn(ndim,2), 2,function(x)
-    sprintf("corr_%s_%s", ynames[x[1]], ynames[x[2]]))
+      sprintf("corr_%s_%s", ynames[x[1]], ynames[x[2]]))
 
 
   obj$parameters <- list(thetas, beta0n, beta,  sigman, rvec)
@@ -60,11 +80,12 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     ## Compute Hessian numerically
     tparHess <- numDeriv::hessian(function(par)
       neg_log_lik_joint(par, response_types, y, X, ntheta,
-                        p, ndimo, ndimn, ndim, combis, idn, ido),
+                        p, ndimo, ndimn, ndim, combis, idn, ido,
+                        combis_fast),
       obj$parOpt)
-
+    cat("Hessian: Done.\n")
     jac_list <- jac_dttheta_dtheta_flexible(thetas,
-                                        ndimo, ntheta) ## d ttheta/d theta
+                                            ndimo, ntheta) ## d ttheta/d theta
     jac_list[ndimo + seq_len(ndimn)] <- 1 ## d tbeta0/dbeta0
     jac_list[ndim + seq_len(ndim * p)] <- 1 ## d tbeta/dbeta
     jac_list[[ndim + ndim * p + 1]] <- diag(1/sigman) ## d tsigma/dsigma
@@ -75,22 +96,30 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     Vi_num <- matrix(0, ncol = length(tpar), nrow = n)
     H <- crossprod(J, tparHess) %*% J
     for (i in seq_len(n)) {
-         if (i %% 100 == 0)  cat('Computed gradient for', i, 'out of', n,'subjects\n')
-         Vi_num[i, ] <- numDeriv::grad(function(par)
-           neg_log_lik_joint(par, response_types,
-                               y[i, ],
-                               X[i, ],
-                               ntheta, p, ndimo, ndimn, ndim,
-                               combis, idn, ido), obj$parOpt,
-           method = "Richardson")
+      if (i %% 100 == 0)  cat('Computed gradient for', i, 'out of', n,'subjects\n')
+      comb_i_tmp <- combn(which(!is.na(y[i,])),  2, simplify = FALSE)
+      combis_fast_i <- lapply(comb_i_tmp, function(x)
+        list(combis = x,
+             ind_i = 1,
+             rpos = which(apply(combis, 2, function(k) all(x==k)))))
+      Vi_num[i, ] <- numDeriv::grad(function(par)
+        neg_log_lik_joint(par, response_types,
+                          y[i, ],
+                          X[i, ],
+                          ntheta, p, ndimo, ndimn, ndim,
+                          combis, idn, ido,
+                          combis_fast = combis_fast_i),
+        obj$parOpt,
+        method = "Richardson")
     }
+    cat("Variability matrix: Done.\n")
     Vi_num <-  Vi_num %*% J.inv
     V <- n/(n - length(tpar)) * crossprod(Vi_num)
     H.inv <- tryCatch(chol2inv(chol(H)),
-                         error=function(e) {
-                           warning("\nCondition number close to zero! Hessian is approximated by nearest positive semidefinite matrix.\n")
-                           chol2inv(chol(Matrix::nearPD(H)$mat))
-                         }
+                      error=function(e) {
+                        warning("\nCondition number close to zero! Hessian is approximated by nearest positive semidefinite matrix.\n")
+                        chol2inv(chol(Matrix::nearPD(H)$mat))
+                      }
     )
     obj$vcov <- H.inv %*% V %*% H.inv
   }
@@ -100,7 +129,7 @@ mvordnorm_fit <- function(y, X, # w,  offset,
 
 neg_log_lik_joint <- function(pars, response_types, y, X,
                               ntheta, p, ndimo, ndimn, ndim,
-                              combis, idn, ido) {
+                              combis, idn, ido, combis_fast) {
 
   ## thresholds
   thetas <- lapply(1:sum(response_types == "ordinal"), function(j) {
@@ -120,49 +149,54 @@ neg_log_lik_joint <- function(pars, response_types, y, X,
 
   beta_mat <- beta
   dim(beta_mat) <- c(ndim, p)
-
+  #print(beta_mat)
   Xbeta <- tcrossprod(X, beta_mat)
 
-  eta_u_o <- lapply(1:ndimo, function(j)
-      c(thetas[[j]], 1e06)[y[, ido[j]]] - Xbeta[, ido[j]])
+  eta_u_o <- sapply(1:ndimo, function(j)
+    c(thetas[[j]], 1e06)[y[, ido[j]]] - Xbeta[, ido[j]])
 
-  eta_l_o <- lapply(1:ndimo, function(j)
-      drop(c(-1e06, thetas[[j]])[y[, ido[j]]] - Xbeta[, ido[j]]))
+  eta_l_o <- sapply(1:ndimo, function(j)
+    drop(c(-1e06, thetas[[j]])[y[, ido[j]]] - Xbeta[, ido[j]]))
 
-  eta_n <- lapply(1:ndimn, function(j) {
+  eta_n <- sapply(1:ndimn, function(j) {
     beta0n[j] + Xbeta[, idn[j]]
-  } )
+  })
 
-  log_pl_vec <- NULL
+  if (is.null(dim(eta_l_o))) {
+    dim(eta_l_o) <- dim(eta_u_o) <-c(1, ndimo)
+    dim(eta_n) <- c(1, ndimn)
+  }
+  log_pl_vec_h <- sapply(combis_fast, function(x) {
+    k <- x$combis[1]
+    l <- x$combis[2]
+    id <- x$ind_i
 
-  for (s in 1:ncol(combis)) {
-    k <- combis[1, s]
-    l <- combis[2, s]
-    r <- rvec[s]
+    r <- rvec[x$rpos]
     ## CASE 1: 2 ordinals
     if (all(response_types[c(k,l)] == "ordinal")) {
       kido <- which(ido == k)
       lido <- which(ido == l)
+      prs <- rectbiv_norm_prob(U = eta_u_o[id, c(kido, lido), drop = FALSE],
+                               L = eta_l_o[id, c(kido, lido), drop = FALSE], r)
 
-      prs <- rectbiv_norm_prob(U = eta_u_o[c(kido, lido)],
-                               L = eta_l_o[c(kido, lido)], r)
       prs[prs < .Machine$double.eps] <- .Machine$double.eps
-      log_pl_vec[s] <- sum(log(prs))
+
+      log_pl_vec <- sum(log(prs))
     }
 
     ## CASE 2: 2 normals
     if (all(response_types[c(k,l)] != "ordinal")) {
       kidn <- which(idn == k)
       lidn <- which(idn == l)
-      ykstd <-  (y[,k] - eta_n[[kidn]])
-      ylstd  <- (y[,l] - eta_n[[lidn]])
+      ykstd <-  (y[id,k] - eta_n[id, kidn, drop = FALSE])
+      ylstd  <- (y[id,l] - eta_n[id, lidn, drop = FALSE])
       smat <- diag(2)
       smat[1,2] <- smat[2, 1] <- r
       smat <- tcrossprod(sigman[c(kidn, lidn)]) * smat
-      log_pl_vec[s] <-  sum(mvtnorm::dmvnorm(x = cbind(ykstd, ylstd),
-                                             mean = rep(0, 2),
-                                             sigma = smat,
-                                             log = TRUE))
+      log_pl_vec <-  sum(mvtnorm::dmvnorm(x = cbind(ykstd, ylstd),
+                                          mean = rep(0, 2),
+                                          sigma = smat,
+                                          log = TRUE))
     }
 
     ## CASE 3: ordinal + normal
@@ -171,27 +205,28 @@ neg_log_lik_joint <- function(pars, response_types, y, X,
       kn <- c(k,l)[which(response_types[c(k,l)] != "ordinal")]
       knidn <- which(idn == kn)
       koido <- which(ido == ko)
-      ld_marg <- dnorm(y[,kn],
-                       mean = eta_n[[knidn]],
+      ld_marg <- dnorm(y[id,kn],
+                       mean = eta_n[id, knidn,drop = FALSE],
                        sd = sigman[knidn],
                        log = TRUE)
 
       sd_yn_cond <- sqrt(1 - r^2)
 
-      eta_cond <-  Xbeta[,kn] + r * (y[,kn] - eta_n[[knidn]]) / sigman[knidn]
+      eta_cond <-  Xbeta[id, ko] +
+        r * (y[id,kn] - eta_n[id, knidn, drop = FALSE]) / sigman[knidn]
 
-      eta_u_cond <- (c(thetas[[koido]],  1e06)[y[,ko]] - eta_cond)/sd_yn_cond
+      eta_u_cond <- (c(thetas[[koido]],  1e06)[y[id,ko]] - eta_cond)/sd_yn_cond
 
-      eta_l_cond <- (c(-1e06, thetas[[koido]])[y[,ko]] - eta_cond)/sd_yn_cond
+      eta_l_cond <- (c(-1e06, thetas[[koido]])[y[id,ko]] - eta_cond)/sd_yn_cond
 
       p_cond <- pnorm(eta_u_cond) - pnorm(eta_l_cond)
 
       p_cond[p_cond < .Machine$double.eps] <- .Machine$double.eps
 
-      log_pl_vec[s] <-  sum(log(p_cond) + ld_marg)
+      log_pl_vec <-  sum(log(p_cond) + ld_marg)
     }
-  }
+    log_pl_vec
 
-  - sum(log_pl_vec)
+  })
+  - sum(log_pl_vec_h)
 }
-
