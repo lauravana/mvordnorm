@@ -35,9 +35,4 @@ data_toy <- cbind.data.frame(y1, y2, z1, z2, X)
 save(data_toy, file = "data/data_toy.rda")
 
 
-pars_true <- c(theta1[1], log(diff(theta1)),
-               theta2[1], log(diff(theta2)),
-               beta0n,
-               beta,
-               log(sigma1), log(sigma2),
-               backtransf_sigmas(cov2cor(S[1:4, 1:4])))
+

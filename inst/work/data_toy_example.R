@@ -30,7 +30,7 @@ S <- matrix(c(1.0,  0.7,  0.8,  0.7,
 pars_true <- c(theta1[1], log(diff(theta1)),
                theta2[1], log(diff(theta2)),
                beta0n,
-               beta,
+               rep(beta, 4),
                log(sigma1), log(sigma2),
                backtransf_sigmas(cov2cor(S[1:4, 1:4])))
 
