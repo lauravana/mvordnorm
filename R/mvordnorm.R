@@ -87,6 +87,10 @@ mvordnorm <- function(formula, data,
   # mtX <- terms(formula, data = data, rhs = 1L)
   y <- Formula::model.part(formula, data = mf, lhs = 1L)
   X <- model.matrix(formula, data = mf, rhs = 1L, contrasts = contrasts)
+  ## if there are subjects without any response, eliminate them
+  row_no_response <- rowSums(is.na(y)) == NCOL(y)
+  y <- y[!row_no_response, , drop = FALSE]
+  X <- X[!row_no_response, , drop = FALSE]
 
   ## TODO OFFSETS
   # offset_form <- model.offset(mf)
