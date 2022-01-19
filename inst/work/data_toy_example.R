@@ -93,3 +93,17 @@ fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3", data = data_toy,
 print.mvordnorm(fit)
 summary.mvordnorm(fit)
 
+### With MISSINGS where some subject have only one response
+
+library("mvordnorm")
+data("data_toy", package = "mvordnorm")
+data_toy$y1[sample(1:nrow(data_toy), 20)] <- NA
+data_toy$y2[sample(1:nrow(data_toy), 20)] <- NA
+data_toy[sample(1:nrow(data_toy), 20), c("y1", "y2", "z2")] <- NA
+fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3", data = data_toy,
+                 na.action = na.pass,
+                 response_types = c("ordinal", "ordinal","gaussian", "gaussian"),
+                 control = mvordnorm.control(se = TRUE, solver = "CG"))
+
+print.mvordnorm(fit)
+summary.mvordnorm(fit)
