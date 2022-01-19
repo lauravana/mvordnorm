@@ -39,8 +39,8 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   ## Optimize negative log likelihood
   obj$res <- optimx(start_values, function(par)
     neg_log_lik_joint(par, response_types,
-                      y, X, ntheta, p, ndimo, ndimn, ndim, combis,
-                      idn, ido, combis_fast),
+                      y, X, ntheta, p, ndimo, ndimn, ndim,
+                      idn, ido, ind_univ, combis_fast),
     method = control$solver)
   ## TODO
   obj$parOpt <- unlist(obj$res[seq_along(start_values)])
@@ -82,11 +82,9 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     ## Compute Hessian numerically
     tparHess <- numDeriv::hessian(function(par)
       neg_log_lik_joint(par, response_types, y, X, ntheta,
-                        p, ndimo, ndimn, ndim, combis, idn, ido,
-                        combis_fast),
+                        p, ndimo, ndimn, ndim, idn, ido,
+                        ind_univ, combis_fast),
       obj$parOpt)
-
-   # diag(solve(tparHess))
 
     cat("Hessian: Done.\n")
     jac_list <- jac_dttheta_dtheta_flexible(thetas,
@@ -102,17 +100,26 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     H <- crossprod(J, tparHess) %*% J
     for (i in seq_len(n)) {
       if (i %% 100 == 0)  cat('Computed gradient for', i, 'out of', n,'subjects\n')
-      comb_i_tmp <- combn(which(!is.na(y[i,])),  2, simplify = FALSE)
-      combis_fast_i <- lapply(comb_i_tmp, function(x)
-        list(combis = x,
-             ind_i = 1,
-             rpos = which(apply(combis, 2, function(k) all(x==k)))))
+      y_pos_nona <- which(!is.na(y[i,]))
+      if (length(y_pos_nona) == 1) {
+        ind_univ_i <- matrix(c(1, y_pos_nona), nrow = 1, ncol = 2)
+        combis_fast_i <- NULL
+      } else {
+        ind_univ_i <- matrix(nrow = 0, ncol = 2)
+        comb_i_tmp <- combn(y_pos_nona,  2, simplify = FALSE)
+        combis_fast_i <- lapply(comb_i_tmp, function(x)
+          list(combis = x,
+               ind_i = 1,
+               rpos = which(apply(combis, 2, function(k) all(x==k)))))
+      }
+
       Vi_num[i, ] <- numDeriv::grad(function(par)
         neg_log_lik_joint(par, response_types,
                           y[i, ],
                           X[i, ],
                           ntheta, p, ndimo, ndimn, ndim,
-                          combis, idn, ido,
+                          idn, ido,
+                          ind_univ = ind_univ_i,
                           combis_fast = combis_fast_i),
         obj$parOpt,
         method = "Richardson")
@@ -134,7 +141,9 @@ mvordnorm_fit <- function(y, X, # w,  offset,
 
 neg_log_lik_joint <- function(pars, response_types, y, X,
                               ntheta, p, ndimo, ndimn, ndim,
-                              combis, idn, ido, combis_fast) {
+                              idn, ido,
+                              ind_univ,
+                              combis_fast) {
 
   ## thresholds
   thetas <- lapply(1:sum(response_types == "ordinal"), function(j) {
@@ -171,7 +180,7 @@ neg_log_lik_joint <- function(pars, response_types, y, X,
     dim(eta_l_o) <- dim(eta_u_o) <-c(1, ndimo)
     dim(eta_n) <- c(1, ndimn)
   }
-  log_pl_vec_h <- sapply(combis_fast, function(x) {
+  log_pl_vec_h <- unlist(sapply(combis_fast, function(x) {
     k <- x$combis[1]
     l <- x$combis[2]
     id <- x$ind_i
@@ -232,6 +241,19 @@ neg_log_lik_joint <- function(pars, response_types, y, X,
     }
     log_pl_vec
 
-  })
+  }))
+  # This are the observations which have only one response (aka univariate)
+  colu <- ind_univ[, 2] # col of univariate
+  rowu <- ind_univ[, 1] # row of univariate
+  idn_univ <- cbind(rowu, match(colu, idn))
+  ido_univ <- cbind(rowu,  match(colu, ido))
+  ndens <- dnorm(y[cbind(rowu, colu)], eta_n[idn_univ],
+                 sigman[match(colu, idn)], log =TRUE)
+  lndens <-  ifelse(is.na(ndens), 0, ndens)
+  odens <- log(pnorm(eta_u_o[ido_univ]) - pnorm(eta_l_o[ido_univ]))
+  lodens <-  ifelse(is.na(odens), 0, odens)
+  univ_nll <- lndens + lodens
+  log_pl_vec_h <- c(log_pl_vec_h, sum(univ_nll))
+
   - sum(log_pl_vec_h)
 }
