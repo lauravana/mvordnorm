@@ -79,14 +79,50 @@ The conditional term is:
 $$
 f(y^o_{ik} | y^n_{il}) = Pr(y^o_{ik}=r_{ik} | y^n_{il}) = Pr(\theta_{k, r_{ik}-1}\leq \tilde y^o_{ik}\leq \theta_{k, r_{ik}} | y^n_{il})
 $$
+
 Given that $\tilde y^o_{ik}$ and $y^n_{il}$ are bivariate normals we have:
 
 $$
 \tilde y^o_{ik} | y^n_{il} \sim N\left(\underbrace{\beta_k^\top x_i + \frac{\rho_{kl}}{\sigma_l}(y^n_{il} - \beta_{0l} -\beta_l^\top x_i)}_{\mu_c}, \underbrace{(1 - \rho_{kl}^2)}_{\sigma_c^2}\right)
 $$
-So 
+So
 $$
 f(y^o_{ik} | y^n_{il}) = Pr(\theta_{k, r_{ik}-1}\leq \tilde y^o_{ik}\leq \theta_{k, r_{ik}} | y^n_{il})=
 \int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} \phi\left(\frac{\tilde y^o_{ik} - \mu_c}{\sigma_c}\right) d\tilde y^o_{ik} = 
 \Phi\left(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}\right)-\Phi\left(\frac{\theta_{k, r_{ik}-1} - \mu_c}{\sigma_c}\right)
 $$
+
+
+## Standard errors
+
+For case 3: 1 normal 1 ordinal. Let $\eta_u=\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}$ and 
+ $\eta_l=\frac{\theta_{k, r_{ik}-1} - \mu_c}{\sigma_c}$ 
+$$
+\frac{\partial \log L}{\partial \psi^o_k} = 1/P (\phi(\eta_u) \tilde x^u_i/\sigma_c + \phi(\eta_l) \tilde x^l_i/\sigma_c)
+$$
+where $\tilde x^u_i=(0, 1, 0, 0,.., - x_i)$, $\tilde x^l_i=(1, 0, 0, 0,.., - x_i)$
+$$
+\frac{\partial \log L}{\partial \beta^n_l} = 1/P (\phi(\eta_u) \rho_{kl}/\sigma_l x_i/\sigma_c -
+\phi(\eta_l) \rho_{kl}/\sigma_l x_i/\sigma_c) - 0.5\sigma_l^{-2} 
+2 (y^n_{il} - \beta_{0l} -\beta_l^\top x_i) (-x_i)
+$$
+$$
+\frac{\partial \log L}{\partial r} = 1/P \left(\phi(\eta_u) \frac{\partial (\theta_{k, r_{ik}}-\mu_c)  - \partial\sigma_c}{\sigma_c^2} -\phi(\eta_l)\frac{\partial (\theta_{k, r_{ik}-1}-\mu_c)  - \partial\sigma_c)}{\sigma_c^2}\right)
+$$
+$$
+\frac{\partial (\theta_{k, r_{ik}}-\mu_c)  - \partial\sigma_c}{\sigma_c^2} = 
+\frac{ (y^n_{il} - \beta_{0l} -\beta_l^\top x_i)/\sigma_l + r/\sqrt{1-r^2}}{1-r^2}
+$$
+
+$$
+\frac{\partial \log L}{\partial \sigma_l} = 1/P (\phi(\eta_u) \rho_{kl}/\sigma_l x_i/\sigma_c -
+\phi(\eta_l) \rho_{kl}/\sigma_l x_i/\sigma_c) - 0.5\sigma_l^{-2} 
+2 (y^n_{il} - \beta_{0l} -\beta_l^\top x_i) (-x_i)
+$$
+$$
+\frac{\partial (\theta_{k, r_{ik}}-\mu_c)/\sigma_c}{\partial\sigma_l} =
+\frac{\partial (\theta_{k, r_{ik}}-\beta_k^\top x_i - r/\sigma_l(y^n-x\beta))/\sigma_c}{\partial\sigma_l}=
+\frac{\partial (- r(\sigma_l)^{-1}(y^n-x\beta))/\sigma_c}{\partial\sigma_l}
+=\frac{r (\sigma_l)^{-2}(y^n-x\beta))}{\sigma_c}
+$$
+
