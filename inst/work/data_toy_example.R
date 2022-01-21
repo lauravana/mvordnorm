@@ -9,7 +9,14 @@ library("mvordnorm")
 data("data_toy", package = "mvordnorm")
 fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3", data = data_toy,
           response_types = c("ordinal", "ordinal","gaussian", "gaussian"),
-          control = mvordnorm.control(se = TRUE, solver = "CG"))
+          control = mvordnorm.control(se = T, solver = "CG"))
+X <- fit$X
+y <- fit$y
+obj <- fit
+
+response_types = c("ordinal", "ordinal","gaussian", "gaussian")
+
+pars <- fit$parOpt
 
 print.mvordnorm(fit)
 summary.mvordnorm(fit)
@@ -104,7 +111,26 @@ data_toy[sample(1:nrow(data_toy), 20), c("y1", "z1", "z2")] <- NA
 system.time(fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3", data = data_toy,
                  na.action = na.pass,
                  response_types = c("ordinal", "ordinal","gaussian", "gaussian"),
-                 control = mvordnorm.control(se = TRUE, solver = "CG")))
+                 control = mvordnorm.control(se = F, solver = "CG")))
 
 print.mvordnorm(fit)
 summary.mvordnorm(fit)
+
+
+library("mvordnorm")
+data("data_toy", package = "mvordnorm")
+data_toy$y1[sample(1:nrow(data_toy), 20)] <- NA
+data_toy$y2[sample(1:nrow(data_toy), 20)] <- NA
+data_toy[sample(1:nrow(data_toy), 20), c("y1", "y2", "z2")] <- NA
+data_toy[sample(1:nrow(data_toy), 20), c("y1", "z1", "z2")] <- NA
+system.time(fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3",
+                             data = data_toy,
+                             na.action = na.pass,
+                             response_types = c("ordinal", "ordinal",
+                                                "gaussian",
+                                                "gaussian"),
+                             control = mvordnorm.control(se = T, solver = "CG")))
+
+print.mvordnorm(fit)
+summary.mvordnorm(fit)
+

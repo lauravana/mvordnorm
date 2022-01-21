@@ -71,6 +71,20 @@ jac_dttheta_dtheta_flexible <- function(theta, ndimo, ntheta) {
   })
 }
 
+jac_dtheta_dttheta_flexible <- function(ttheta, ndimo, ntheta) {
+  lapply(seq_len(ndimo), function(j){
+        emat <- diag(ntheta[j])
+        if (ncol(emat) >= 2) {
+              emat[,1] <- 1
+              for (k in 2:ncol(emat))
+                 emat[(k:nrow(emat)), k] <-
+                  exp(ttheta[cumsum(c(0, ntheta[seq_len(j-1)]))[j] + seq_len(ntheta[j])])[k]
+        }
+        emat
+  })
+
+}
+
 tr_r_function <- function(rvec, ndim, i) {
   R <- diag(ndim)
   R[lower.tri(R)] <- rvec
@@ -90,6 +104,19 @@ tr_r_function <- function(rvec, ndim, i) {
   log(angdivpi/(1-angdivpi))[i]
 }
 
+r_tr_function <- function(tpar, ndim, i) {
+  nu <- tpar
+  angles <- pi * exp(nu)/(1 + exp(nu))
+  cosmat <- diag(ndim)
+  cosmat[lower.tri(cosmat)] <- cos(angles)
+  S1 <- matrix(0, nrow = ndim, ncol = ndim)
+  S1[lower.tri(S1, diag = TRUE)] <- c(rep(1, ndim), sin(angles))
+  tLmat <- sapply(1:ndim,
+                  function(j) cosmat[j, ] * cumprod(S1[j, ]))
+  sigma <- crossprod(tLmat)
+  sigma[lower.tri(sigma)][i]
+}
+
 backtransf_sigmas <- function(R){
   J <- nrow(R)
   l <- t(chol(R))
@@ -104,6 +131,12 @@ backtransf_sigmas <- function(R){
 }
 
 
+jac_dr_dtr <- function(tpar, ndim){
+  t(sapply(seq_along(tpar), function(i)
+    numDeriv::grad(function(x) r_tr_function(x, ndim, i),
+                   x=tpar)))
+}
+
 
 jac_dtr_dr <- function(rvec, ndim){
  t(sapply(seq_along(rvec), function(i)
@@ -116,4 +149,21 @@ get_labels_theta <- function(yj, nthetaj) {
   sapply(seq_len(nthetaj), function(i){
     paste(lev[i], lev[i + 1], sep = "|")
   })
+}
+
+f_transf <- function(pars, response_types,ntheta,ndim, ndimn,p) {
+  thetas <- lapply(1:sum(response_types == "ordinal"), function(j) {
+    transf_thresholds_flexible(pars[cumsum(c(0, ntheta))[j] + seq_len(ntheta[j])])
+  })
+  ## regression coefs: intercepts for normals
+  beta0n <- pars[sum(ntheta) + seq_len(ndimn)] # we need intercepts for the normal variables
+  ## common regression coefs
+  beta <- pars[sum(ntheta) + ndimn + seq_len(ndim * p)]
+  ## sd parameters for normals
+  sigman <- exp(pars[sum(ntheta) + ndimn + ndim * p + seq_len(ndimn)])
+  ## correlations error structure
+  tparerror <- pars[(sum(ntheta) + ndimn + ndim * p + ndimn + seq_len(ndim * (ndim - 1)/2))]
+  rvec <- transf_sigma(tparerror, ndim)
+  ##
+  return(c(unlist(thetas), beta0n, beta, sigman, rvec))
 }
