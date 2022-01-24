@@ -283,8 +283,8 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       pos_beta_kn <- c(sum(ntheta) + knidn, sum(ntheta) + ndimn + kn + ndim * (1:p - 1))
 
       dbetakn <- (c(1/p_cond) * c(dnorm(eta_u_cond)/(sd_yn_cond * sigman[knidn]) -
-                     dnorm(eta_l_cond)/(sd_yn_cond * sigman[knidn]))  * Xn[[kidn]][indkl, ]) -
-        (y[indkl,kn] - eta_n[indkl,knidn])/sigman[knidn] * Xn[[kidn]][indkl, ]
+                     dnorm(eta_l_cond)/(sd_yn_cond * sigman[knidn]))  * Xn[[knidn]][indkl, ]) -
+        (y[indkl,kn] - eta_n[indkl,knidn])/sigman[knidn] * Xn[[knidn]][indkl, ]
 
       gradmat[indkl, pos_beta_kn] <- dbetakn
 
@@ -294,7 +294,7 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       #
       partb <- c(1/p_cond) * (dnorm(eta_u_cond) - dnorm(eta_l_cond)) *
         rkl * sigman[knidn]^(-2) * (y[indkl,kn] - eta_n[indkl,knidn])/sd_yn_cond
-      pos_sigma_n   <- sum(ntheta) + ndimn + ndim * p + kidn
+      pos_sigma_n   <- sum(ntheta) + ndimn + ndim * p + knidn
       gradmat[indkl, pos_sigma_n] <- parta + partb
       ### r
       pos_r_kl   <- sum(ntheta) + 2 * ndimn + ndim * p + x$rpos
