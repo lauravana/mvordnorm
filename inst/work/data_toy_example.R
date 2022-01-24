@@ -111,7 +111,7 @@ data_toy[sample(1:nrow(data_toy), 20), c("y1", "z1", "z2")] <- NA
 system.time(fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3", data = data_toy,
                  na.action = na.pass,
                  response_types = c("ordinal", "ordinal","gaussian", "gaussian"),
-                 control = mvordnorm.control(se = F, solver = "CG")))
+                 control = mvordnorm.control(se = TRUE, solver = "CG")))
 
 print.mvordnorm(fit)
 summary.mvordnorm(fit)
@@ -133,4 +133,5 @@ system.time(fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3",
 
 print.mvordnorm(fit)
 summary.mvordnorm(fit)
+
 

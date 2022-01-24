@@ -4,7 +4,7 @@ d_rect <- function(Uk, Ul, Lk, Ll, r,
   UL <- d_biv_fun(Uk, Ll, r)
   LU <- d_biv_fun(Lk, Ul, r)
   LL <- d_biv_fun(Lk, Ll, r)
-  - ((UU - UL) * dUmat  - (LU - LL) * dLmat)
+  ((UU - UL) * dUmat  - (LU - LL) * dLmat)
 }
 
 d_psi_rect_kl <- function(Uk, Ul, Lk, Ll, r,
@@ -18,14 +18,15 @@ d_psi_rect_kl <- function(Uk, Ul, Lk, Ll, r,
 }
 
 d_corr_rect <- function(Uk, Ul, Lk, Ll, r, fun) {
-  - fun(Uk, Ul, r) + fun(Uk, Ll, r) + fun(Lk, Ul, r) - fun(Lk, Ll, r)
+  fun(Uk, Ul, r) - fun(Uk, Ll, r) - fun(Lk, Ul, r) + fun(Lk, Ll, r)
 }
 
 dF2dx <- function(x, y, r) dnorm(x) * pnorm((y - r * x)/sqrt(1 - r^2))
 
 dF2dr <- function(x, y, r){
   1/(2 * pi * sqrt(1 - r^2)) *
-    exp(-(x^2 - 2 * r * x * y + y^2)/(2 * (1 - r^2)))}
+    exp(-(x^2 - 2 * r * x * y + y^2)/(2 * (1 - r^2)))
+  }
 
 # pars <- obj$parOpt
 derivs_ana <- function(pars, y, X, response_types, ind_univ,
@@ -73,7 +74,7 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
   XL <- lapply(1:ndimo, function(j) {
     B2 <- (col(matrix(0, nrow(y), ntheta[j] + 1)) == c(unclass(y[, ido[j]])))
     BL <- B2[,-1, drop = FALSE]
-    cbind(BL, -X)
+    cbind(BL, - X)
   })
   Xn <- lapply(1:ndimn, function(j) {
     cbind(1, X)
@@ -117,9 +118,9 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
 
       if (response_types[j] != "ordinal") {
         jidn <- which(idn == j)
-        dsigmaj <- -1/sigman[jidn]^2 - sigman[jidn]^(-3) *
+        dsigmaj <- 1/sigman[jidn] - sigman[jidn]^(-3) *
           (y[subj,j] - eta_n[subj,jidn])^2
-        dbetaj <- - (y[subj,j] - eta_n[subj,jidn])/sigman[jidn] * Xn[[jidn]][subj, ]
+        dbetaj <- - (y[subj,j] - eta_n[subj,jidn])/sigman[jidn]^2 * Xn[[jidn]][subj, ]
         pos_sigma_j   <- sum(ntheta) + ndimn + ndim * p + jidn
         pos_beta_jn <- c(sum(ntheta) + jidn,
                          sum(ntheta) + ndimn + j + ndim * (1:p - 1))
@@ -176,24 +177,26 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       pos_beta_k <- sum(ntheta) + ndimn + k + ndim * (1:p - 1)
       pos_beta_l <- sum(ntheta) + ndimn + l + ndim * (1:p - 1)
 
-      gradmat[indkl, c(pos_theta_k, pos_beta_k)] <- 1/pr * d_rect(Uk = Uk, Lk = Lk,
-                                                           Ul = Ul, Ll= Ll,
-                                                           r = rkl,
-                                                           dUmat = XUk,
-                                                           dLmat = XLk,
-                                                           d_biv_fun = dF2dx)
-      gradmat[indkl, c(pos_theta_l, pos_beta_l)] <- 1/pr * d_rect(Uk = Uk, Lk = Lk,
-                                                           Ul = Ul, Ll= Ll,
-                                                           r = rkl,
-                                                           dUmat = XUl,
-                                                           dLmat = XLl,
-                                                           d_biv_fun = dF2dx)
+      gradmat[indkl, c(pos_theta_k, pos_beta_k)] <- - 1/pr * d_rect(
+        Uk = Uk, Lk = Lk,
+        Ul = Ul, Ll= Ll,
+        r = rkl,
+        dUmat = XUk,
+        dLmat = XLk,
+        d_biv_fun = dF2dx)
+      gradmat[indkl, c(pos_theta_l, pos_beta_l)] <- - 1/pr * d_rect(
+        Uk = Ul, Lk = Ll,
+        Ul = Uk, Ll= Lk,
+        r = rkl,
+        dUmat = XUl,
+        dLmat = XLl,
+        d_biv_fun = dF2dx)
 
       ##################
       ## dcorr
       ##################
       pos_corr_kl <- sum(ntheta) + 2 * ndimn + ndim * p + x$rpos
-      gradmat[indkl, pos_corr_kl] <- 1/pr * d_corr_rect(Uk, Ul, Lk, Ll, r = rkl, dF2dr)
+      gradmat[indkl, pos_corr_kl] <- - 1/pr * d_corr_rect(Uk, Ul, Lk, Ll, r = rkl, dF2dr)
     }
     ## CASE 2: 2 normals
     if (all(response_types[c(k,l)] != "ordinal")) {
@@ -207,9 +210,10 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       ###############################
       ## dbeta0 and dbeta for pair kl
       ###############################
+      B_star_kl <- cbind(beta0n, beta_mat[c(k,l),])
       dbeta <- lapply(indkl, function(i){
-        (-2 * tcrossprod(Xn[[kidn]][i, ], y[i, c(k,l)])  +
-          2 * tcrossprod(Xn[[kidn]][i, ]) %*% t(cbind(beta0n, beta_mat[c(k,l),]))) %*% smatinv
+        (2 * tcrossprod(Xn[[kidn]][i, ], y[i, c(k,l)])  -
+          2 * tcrossprod(Xn[[kidn]][i, ], B_star_kl %*% Xn[[kidn]][i, ])) %*% smatinv
       })
       dbetak <- t(sapply(dbeta, function(x) x[, 1]))
       dbetal <- t(sapply(dbeta, function(x) x[, 2]))
@@ -227,19 +231,18 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       ##################
       # see https://stats.stackexchange.com/questions/27436/how-to-take-derivative-of-multivariate-normal-density
       dLdSigma <- do.call("rbind", lapply(indkl, function(j){
-        A <- -1/2 * (smatinv - smatinv %*% tcrossprod(y[j, c(k,l)] - eta_n[j, c(kidn, lidn)])
-                       %*% smatinv)
-        B <- 2 * A - diag(diag(A))
-        c(B)
+        SinvxxtSinv <- smatinv %*% tcrossprod(y[j, c(k,l)] - eta_n[j, c(kidn, lidn)]) %*% smatinv
+        res <- (1/2 * (2 * Sinv - diag(diag(Sinv)) - 2 * SinvxxtSinv + diag(diag(SinvxxtSinv))))
+        res[lower.tri(res, diag = TRUE)] # it is symmetric, we only need the lower triangle
       }))
-
-      f <- function(x) {
-        xmat <- matrix(x, nrow=2L)
-        r <- cov2cor(xmat)[1,2]
-        sigma <- sqrt(diag(xmat))
-        c(sigma, r)
+      f1 <- function(pars, y, X) {
+        sigma <- pars[1:2]
+        r <- pars[3]
+        Sigma <- matrix(c(sigma[1]^2,r*sigma[1]*sigma[2],
+                          r*sigma[1]*sigma[2],sigma[2]^2), ncol = 2)
+        c(Sigma[lower.tri(xmat, diag = TRUE)])
       }
-      dSigmadR <- numDeriv::jacobian(f, x=c(smat))
+      dSigmadR <- numDeriv::jacobian(f1, x = c(sigman[c(kidn, lidn)], rkl))
       dLdR <- tcrossprod(dLdSigma,  dSigmadR)
 
       pos_sdn_kl <- sum(ntheta) + ndimn + ndim * p + c(kidn, lidn)
@@ -258,15 +261,15 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
                        sd = sigman[knidn],
                        log = TRUE)
 
-      sd_yn_cond <- sqrt(1 - rkl^2)
+      sigma_c <- sqrt(1 - rkl^2)
 
-      eta_cond <-  Xbeta[indkl, ko] +
+      mu_cond <-  Xbeta[indkl, ko] +
         rkl * (y[indkl,kn] - eta_n[indkl, knidn, drop = FALSE]) / sigman[knidn]
 
-      eta_u_cond <- (c(thetas[[koido]],  1e06)[y[indkl,ko]] - eta_cond)/sd_yn_cond
-      eta_l_cond <- (c(-1e06, thetas[[koido]])[y[indkl,ko]] - eta_cond)/sd_yn_cond
+      eta_u_c <- (c(thetas[[koido]],  1e06)[y[indkl,ko]] - mu_cond)/sigma_c
+      eta_l_c <- (c(-1e06, thetas[[koido]])[y[indkl,ko]] - mu_cond)/sigma_c
 
-      p_cond <- pnorm(eta_u_cond) - pnorm(eta_l_cond)
+      p_cond <- pnorm(eta_u_c) - pnorm(eta_l_c)
       p_cond[p_cond < .Machine$double.eps] <- .Machine$double.eps
 
       #dbeta ko
@@ -275,31 +278,38 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       pos_theta_ko <- cumsum(c(0, ntheta))[koido] + seq_len(ntheta[koido])
       pos_beta_ko <- sum(ntheta) + ndimn + ko + ndim * (1:p - 1)
 
-      dpsiko <- c(1/p_cond) * (c(dnorm(eta_l_cond)/sd_yn_cond) * XUko -
-                               c(dnorm(eta_u_cond)/sd_yn_cond) * XLko)
+      dpsiko <- c(1/p_cond) * (c(dnorm(eta_l_c)/sigma_c) * XLko -
+                               c(dnorm(eta_u_c)/sigma_c) * XUko)
+
       gradmat[indkl, c(pos_theta_ko, pos_beta_ko)] <- dpsiko
 
       # dbeta0 and dbeta kn
       pos_beta_kn <- c(sum(ntheta) + knidn, sum(ntheta) + ndimn + kn + ndim * (1:p - 1))
+      parta <- c(dnorm(eta_u_c) - dnorm(eta_l_c)) * rkl/(sigma_c * sigman[knidn])
+      partb <-  - (y[indkl,kn] - eta_n[indkl,knidn])/(sigman[knidn]^2) *
+        Xn[[knidn]][indkl, ]
 
-      dbetakn <- (c(1/p_cond) * c(dnorm(eta_u_cond)/(sd_yn_cond * sigman[knidn]) -
-                     dnorm(eta_l_cond)/(sd_yn_cond * sigman[knidn]))  * Xn[[knidn]][indkl, ]) -
-        (y[indkl,kn] - eta_n[indkl,knidn])/sigman[knidn] * Xn[[knidn]][indkl, ]
+      dbetakn <-  - c(1/p_cond) * parta * Xn[[knidn]][indkl, ] + partb
 
       gradmat[indkl, pos_beta_kn] <- dbetakn
 
       ### sigmal
       # deriv of marginal normal
-      parta <- -1/sigman[knidn]^2 - sigman[knidn]^(-3) *  (y[indkl,kn] - eta_n[indkl,knidn])^2
+      parta <- 1/sigman[knidn] - sigman[knidn]^(-3) *  (y[indkl,kn] - eta_n[indkl,knidn])^2
       #
-      partb <- c(1/p_cond) * (dnorm(eta_u_cond) - dnorm(eta_l_cond)) *
-        rkl * sigman[knidn]^(-2) * (y[indkl,kn] - eta_n[indkl,knidn])/sd_yn_cond
+      partb <- -c(1/p_cond) * (dnorm(eta_u_c) - dnorm(eta_l_c)) *
+        rkl * sigman[knidn]^(-2) * (y[indkl,kn] - eta_n[indkl,knidn])/sigma_c
       pos_sigma_n   <- sum(ntheta) + ndimn + ndim * p + knidn
       gradmat[indkl, pos_sigma_n] <- parta + partb
+
       ### r
       pos_r_kl   <- sum(ntheta) + 2 * ndimn + ndim * p + x$rpos
-      gradmat[indkl, pos_r_kl] <- c(1/p_cond) * (dnorm(eta_u_cond) - dnorm(eta_l_cond)) *
-        ((y[indkl,kn] - eta_n[indkl, knidn])/sigman[knidn] + rkl/sqrt(1-rkl^2))/(1-rkl^2)
+      zn <- (y[indkl,kn] - eta_n[indkl, knidn])/sigman[knidn]
+      deta_u_c_dbeta <- zn / sigma_c + rkl * eta_u_c/sigma_c^2
+      deta_l_c_dbeta <- zn / sigma_c + rkl * eta_l_c/sigma_c^2
+      gradmat[indkl, pos_r_kl] <- -c(1/p_cond) *
+        (dnorm(eta_u_c) * deta_u_c_dbeta  - dnorm(eta_l_c) * deta_l_c_dbeta)
+
     }
     g_list[[i + it0]] <- gradmat
   }

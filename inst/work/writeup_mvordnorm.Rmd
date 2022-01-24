@@ -1,6 +1,8 @@
 ---
 title: "Writeup mvordnorm"
-output: html_document
+output: pdf_document
+header-includes:
+  - \usepackage{bm}
 ---
 
 # Model
@@ -93,36 +95,202 @@ f(y^o_{ik} | y^n_{il}) = Pr(\theta_{k, r_{ik}-1}\leq \tilde y^o_{ik}\leq \theta_
 $$
 
 
-## Standard errors
+# Standard errors
 
-For case 3: 1 normal 1 ordinal. Let $\eta_u=\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}$ and 
- $\eta_l=\frac{\theta_{k, r_{ik}-1} - \mu_c}{\sigma_c}$ 
+## Univariate case
+
+If for some observations only one response $j$ is observed, then we have two cases: either an ordinal response, or a continuous response.
+
+
+### Ordinal response 
+The negative log-likelihood is:
 $$
-\frac{\partial \log L}{\partial \psi^o_k} = 1/P (\phi(\eta_u) \tilde x^u_i/\sigma_c + \phi(\eta_l) \tilde x^l_i/\sigma_c)
+\textrm{neglog}\mathcal L^j_{i} = -\log\left(\Phi\left( \theta_{j, r_{ij}} - \boldsymbol \beta_j^\top \boldsymbol x_i\right)-\Phi\left( \theta_{j, r_{ij}-1} - \boldsymbol \beta_j^\top \boldsymbol x_i\right)\right)
 $$
-where $\tilde x^u_i=(0, 1, 0, 0,.., - x_i)$, $\tilde x^l_i=(1, 0, 0, 0,.., - x_i)$
-$$
-\frac{\partial \log L}{\partial \beta^n_l} = 1/P (\phi(\eta_u) \rho_{kl}/\sigma_l x_i/\sigma_c -
-\phi(\eta_l) \rho_{kl}/\sigma_l x_i/\sigma_c) - 0.5\sigma_l^{-2} 
-2 (y^n_{il} - \beta_{0l} -\beta_l^\top x_i) (-x_i)
-$$
-$$
-\frac{\partial \log L}{\partial r} = 1/P \left(\phi(\eta_u) \frac{\partial (\theta_{k, r_{ik}}-\mu_c)  - \partial\sigma_c}{\sigma_c^2} -\phi(\eta_l)\frac{\partial (\theta_{k, r_{ik}-1}-\mu_c)  - \partial\sigma_c)}{\sigma_c^2}\right)
-$$
-$$
-\frac{\partial (\theta_{k, r_{ik}}-\mu_c)  - \partial\sigma_c}{\sigma_c^2} = 
-\frac{ (y^n_{il} - \beta_{0l} -\beta_l^\top x_i)/\sigma_l + r/\sqrt{1-r^2}}{1-r^2}
-$$
+Assume $\tilde x^u_i = (0,1,..,-\boldsymbol x_i)^\top$ and $\tilde x^l_i = (1,0,..,-x_i)^\top$ (i.e., we make a dummy matrix of dimension $K_j$ where for the lower predictors we eliminate the first column and for the upper predictors we eliminate the last column) and $\boldsymbol \psi_j=(\boldsymbol \theta_j, \boldsymbol \beta_j)^\top$. The relevant derivatives are:
 
 $$
-\frac{\partial \log L}{\partial \sigma_l} = 1/P (\phi(\eta_u) \rho_{kl}/\sigma_l x_i/\sigma_c -
-\phi(\eta_l) \rho_{kl}/\sigma_l x_i/\sigma_c) - 0.5\sigma_l^{-2} 
-2 (y^n_{il} - \beta_{0l} -\beta_l^\top x_i) (-x_i)
+\frac{\partial\textrm{neglog}\mathcal L^j_{i}}{\boldsymbol \psi_j}=-\frac{1}{\Phi\left( \psi_j^\top \tilde x^u_i\right)-\Phi\left(\psi_j^\top \tilde x^l_i\right)}(\phi(\psi_j^\top \tilde x^u_i)\tilde x^u_i - \phi(\psi_j^\top \tilde x^l_i)\tilde x^l_i)
+$$
+
+### Gaussian responses
+
+The negative log-likelihood is:
+$$
+\textrm{neglog}\mathcal L^j_{i} = -\log\left(\frac{1}{\sqrt{2\pi\sigma^2_j}}\exp\left(-\frac{(y_i - \beta_{j}^{*\top} x^*_i)^2}{2\sigma_j^2}\right)\right) = 0.5\log(2\pi)+\log(\sigma_j) + \frac{(y_i - \beta_{j}^{*\top} x^*_i)^2}{2\sigma_j^2}
+$$
+where $x^*_i=(1, x_i)^\top$ and $\beta^*_{j}=(\beta_{0j}, \bm\beta_j)^\top$.
+
+
+The relevant derivatives are:
+
+$$
+\frac{\partial\textrm{neglog}\mathcal L^j_{i}}{\boldsymbol \beta^*_{j}}=-x^*_i\frac{(y_i - \beta_{j}^{*\top} x^*_i)}{\sigma_j^2}
 $$
 $$
-\frac{\partial (\theta_{k, r_{ik}}-\mu_c)/\sigma_c}{\partial\sigma_l} =
-\frac{\partial (\theta_{k, r_{ik}}-\beta_k^\top x_i - r/\sigma_l(y^n-x\beta))/\sigma_c}{\partial\sigma_l}=
-\frac{\partial (- r(\sigma_l)^{-1}(y^n-x\beta))/\sigma_c}{\partial\sigma_l}
-=\frac{r (\sigma_l)^{-2}(y^n-x\beta))}{\sigma_c}
+\frac{\partial\textrm{neglog}\mathcal L^j_{i}}{\sigma_{j}}=\frac{1}{\sigma_j} +
+\frac{(y_i - \beta_{j}^{*\top} x^*_i)^2}{2}\cdot (-2)\sigma_j^{-3} = 
+\frac{1}{\sigma_j} -
+(y_i - \beta_{j}^{*\top} x^*_i)^2\cdot \sigma_j^{-3}
+$$
+
+## Bivariate case
+
+### Case 1: 2 ordinal variables
+
+See derivations for **mvord**. In principle we have:
+
+
+$$
+\textrm{neglog}\mathcal L^{k,l}_{i} = -\log\left(\Phi_2(U_k, U_l,\rho) - \Phi_2(U_k, L_l,\rho) -\Phi_2(U_l, L_k,\rho)+\Phi_2(L_k, L_l,\rho) \right)
+$$
+where
+$U_k = \psi_k^\top \tilde x^u_i$,
+$L_k = \psi_k^\top \tilde x^l_i$,
+$U_l = \psi_l^\top \tilde x^u_i$,
+$L_l =\psi_l^\top \tilde x^l_i$. 
+
+Let $p^{k,l} = \Phi_2(U_k, U_l,\rho) - \Phi_2(U_k, L_l,\rho) -\Phi_2(U_l, L_k,\rho)+\Phi_2(L_k, L_l,\rho)$. 
+
+
+We use here the property that:
+$$
+\frac{\partial\Phi_2(x, y, \rho)}{\partial x} = \phi(x)\Phi\left(\frac{y - \rho x}{\sqrt{1-\rho^2}}\right)
+$$
+and 
+$$
+\frac{\partial\Phi_2(x, y, \rho)}{\partial \rho} = \frac{1}{2\pi\sqrt{1-\rho^2}}
+\exp\left(\frac{-x^2 - 2\rho xy + y^2}{2(1-\rho^2)}\right)
+$$
+
+The relevant derivatives are:
+\begin{align*}
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\boldsymbol \psi_k}&=-\frac{1}{p^{k,l}}\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_k}\cdot \tilde x^u_i - \frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial U_k}\cdot \tilde x^u_i - \frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial L_k}\cdot \tilde x^l_i + \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_k}\cdot \tilde x^l_i\right)\\
+&=-\frac{1}{p^{k,l}}\left(\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_k} - \frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial U_k}\right)\cdot \tilde x^u_i -  \left(\frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial L_k}\right) - \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_k}\cdot \tilde x^l_i\right)\\
+\end{align*}
+
+
+\begin{align*}
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\boldsymbol \psi_l}&=-\frac{1}{p^{k,l}}\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_l}\cdot \tilde x^u_i - \frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial L_l}\cdot \tilde x^l_i - \frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial U_l}\cdot \tilde x^u_i + \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_l}\cdot \tilde x^l_i\right)\\
+&=-\frac{1}{p^{k,l}}\left(\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_l} - \frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial U_l}\right)\cdot \tilde x^u_i -  \left(\frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial L_l}\right) - \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_l}\cdot \tilde x^l_i\right)\\
+\end{align*}
+
+\begin{align*}
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{ \rho}&=-\frac{1}{p^{k,l}}\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial \rho} - \frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial \rho} - \frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial \rho} + \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial \rho}\right)
+\end{align*}
+
+### Case 2: Bivariate Gaussian 
+
+The bivariate negative log likelihood in this case is:
+
+$$
+\textrm{neglog}\mathcal L^{k,l}_{i} \propto 0.5\log(\det(\Sigma)) + \frac{1}{2}(\bm y_i - \bm\mu)^\top\Sigma^{-1}(\bm y_i - \bm\mu)
+$$
+where $\bm\mu = (\beta^{*\top}_kx^*_i, \beta^{*\top}_lx^*_i)$ and $\Sigma=\begin{pmatrix}\sigma^2_k & \sigma_k\sigma_l\rho \\\sigma_k\sigma_l\rho & \sigma^2_k\end{pmatrix}$.
+
+We use (see https://stats.stackexchange.com/questions/27436/how-to-take-derivative-of-multivariate-normal-density)
+$$
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\partial\mu} = -\Sigma^{-1}(\bm y_i-\bm\mu)
+$$
+and 
+$$
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\partial\Sigma} = 
+\frac{1}{2}(2\Sigma^{-1} - (\Sigma^{-1} \circ I) - 2\Sigma^{-1}(\bm y_i - \bm\mu)(\bm y_i - \bm\mu)^\top\Sigma^{-1} + (\Sigma^{-1}(\bm y_i - \bm\mu)(\bm y_i - \bm\mu)^\top\Sigma^{-1}\circ I)
+$$
+where $\circ$ denotes the Hadamard product (elementwise product). The last expression is based on the following:
+$$
+\frac{\partial\log(\det(\Sigma))}{\partial\Sigma} = 2\Sigma^{-1} - (\Sigma^{-1} \circ I)
+$$
+and 
+$$
+\frac{\partial\mathrm{trace}(\Sigma^{-1}xx^\top)}{\partial\Sigma} = - 2\Sigma^{-1}xx^\top\Sigma^{-1} + (\Sigma^{-1}xx^\top\Sigma^{-1}\circ I)
+$$
+The relevant derivatives are:
+$$
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\partial B^*_{kl}} =  
+2\bm x^*_i \bm y_i^\top \Sigma^{-1} - 2 \bm x^*_i \bm x_i^{*\top} B^*_{kl}\Sigma^{-1}
+$$
+where $B^*_{kl}$ is a $(p \times 2)$ matrix where the first column contains $\beta^*_k$ and second one contains $\beta^*_l$. (see slide 60 http://users.stat.umn.edu/~helwig/notes/mvlr-Notes.pdf)
+
+We can then use a numeric Jacobian to compute $\partial\Sigma/\partial\rho$,
+$\partial\Sigma/\partial\sigma_k$, $\partial\Sigma/\partial\sigma_l$ (can be done easily by hand if time is no constraint).
+
+### Case 3: Mixture of Gaussian and ordinal
+
+If we have 1 normal variable at position $l$ and one ordinal variable at position $k$ we have:
+$$
+\textrm{neglog}\mathcal L^{k,l}_{i} = \log\left(\Phi(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}) - \Phi(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c})\right) + 0.5\log(2\pi)+\log(\sigma_l) + \frac{(y_{il} - \beta_{l}^{*\top} x^*_i)^2}{2\sigma_l^2}
+$$
+
+
+Let $\eta^u_c=\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}$ and 
+ $\eta^l_c=\frac{\theta_{k, r_{ik}-1} - \mu_c}{\sigma_c}$.
+Let $p^{k,l}_c = \Phi(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}) - \Phi(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c})$.
+
+The relevant derivatives are:
+
+$$
+\frac{\partial \textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \bm\psi_k} = - \frac{1}{p^{k,l}_c} \left(\phi(\eta^u_c) \frac{\partial\eta^u_c}{\partial \bm\psi_k} - \phi(\eta^l_c) \frac{\partial\eta^l_c}{\partial \bm\psi_k}\right)
+$$
+Given that
+$$
+\eta^u_c = \frac{\psi_k^\top \tilde x^u_i - \frac{\rho}{\sigma_l}(y_{il}-\beta^{*\top}_lx^*_i)}{\sqrt{1-\rho^2}}
+$$
+we have
+$$
+\frac{\partial\eta^u_c}{\partial \bm\psi_k} = \frac{1}{\sqrt{1-\rho^2}}\tilde x^u_i.
+$$
+Similarly, 
+$$
+\frac{\partial\eta^l_c}{\partial \bm\psi_k} = \frac{1}{\sqrt{1-\rho^2}}\tilde x^l_i.
+$$
+Putting it all together:
+$$
+\frac{\partial \textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \bm\psi_k} = - \frac{1}{p^{k,l}_c} \left(\phi(\eta^u_c) \frac{1}{\sqrt{1-\rho^2}}\tilde x^u_i - \phi(\eta^l_c) \frac{1}{\sqrt{1-\rho^2}}\tilde x^l_i\right).
+$$
+Now for the coefficients of the normal variable $\beta^*_l$
+$$
+\frac{\partial \textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \bm\beta^*_l} = - \frac{1}{p^{k,l}_c}\left(\phi(\eta^u_c) \frac{\partial\eta^u_c}{\partial \bm\beta^*_l} - \phi(\eta^l_c) \frac{\partial\eta^l_c}{\partial \bm\beta^*_l}\right) -x^*_i
+\frac{(y_{il} - \beta^{*\top}_l x^*_i)}{\sigma_l^2}
+$$
+where we have
+$$
+\frac{\partial\eta^u_c}{\partial \bm\beta^*_l} = \frac{\partial\eta^l_c}{\partial \bm\beta^*_l} =
+\frac{\rho}{\sigma_l\sqrt{1-\rho^2}}x^*_i.
+$$
+
+Putting it all together:
+
+$$
+\frac{\partial \textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \bm\beta^*_l} = - \frac{1}{p^{k,l}_c}\frac{\rho}{\sigma_l\sqrt{1-\rho^2}}x^*_i\left(\phi(\eta^u_c)  - \phi(\eta^l_c) \right) -x^*_i
+\frac{(y_{il} - \beta^{*\top}_l x^*_i)}{\sigma_l^2}
+$$
+For the correlation parameter of the pair:
+$$
+\frac{\partial \textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \rho} = -\frac{1}{p^{k,l}_c} \left(\phi(\eta^u_c) \frac{\partial\eta^u_c}{\partial \rho} -\phi(\eta^l_c)\frac{\partial\eta^l_c}{\partial \rho}\right)
+$$
+where let $g^u(\rho)=\psi_k^\top \tilde x^u_i - \frac{\rho}{\sigma_l}(y_{il}-\beta^{*\top}_lx^*_i)$ and $h(\rho)=\sqrt{1-\rho^2}$, $\partial h(\rho)/\partial \rho = - \rho/\sqrt{1-\rho^2}$.
+
+$$
+\frac{\partial\eta^u_c}{\partial \rho} =\frac{(\sqrt{1-\rho^2})
+ (y_{il} - \beta_l^{*\top} x^*_i)/\sigma_l + \rho/\sqrt{1-\rho^2}\cdot g^u(\rho)}{1-\rho^2}=\frac{(y_{il} - \beta_l^{*\top} x^*_i)/\sigma_l}{\sqrt{1-\rho^2}} + \frac{\rho \eta^u_c}{1-\rho^2}
+$$
+and 
+$$
+\frac{\partial\eta^l_c}{\partial \rho} =\frac{(y_{il} - \beta_l^{*\top} x^*_i)/\sigma_l}{\sqrt{1-\rho^2}} + \frac{\rho \eta^l_c}{1-\rho^2}
+$$
+
+Finally, for the standard deviation parameter of the normal:
+$$
+\frac{\partial \textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \sigma_l} = -\frac{1}{p^{k,l}_c} \left(\phi(\eta^u_c) \frac{\partial\eta^u_c}{\partial \sigma_l} -\phi(\eta^l_c)\frac{\partial\eta^l_c}{\partial \sigma_l}\right) +
+\frac{1}{\sigma_l} -
+(y_{il} - \beta_{l}^{*\top} x^*_i)^2\cdot \sigma_l^{-3}
+$$
+
+
+
+$$
+\frac{\partial\eta^u_c}{\partial\sigma_l} =\frac{\partial\eta^l_c}{\partial\sigma_l} 
+=\frac{\rho \sigma_l^{-2}(y_{il} - \beta_{l}^{*\top} x^*_i)}{\sigma_c}
 $$
 
