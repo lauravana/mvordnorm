@@ -107,10 +107,10 @@ The negative log-likelihood is:
 $$
 \textrm{neglog}\mathcal L^j_{i} = -\log\left(\Phi\left( \theta_{j, r_{ij}} - \boldsymbol \beta_j^\top \boldsymbol x_i\right)-\Phi\left( \theta_{j, r_{ij}-1} - \boldsymbol \beta_j^\top \boldsymbol x_i\right)\right)
 $$
-Assume $\tilde x^u_i = (0,1,..,-\boldsymbol x_i)^\top$ and $\tilde x^l_i = (1,0,..,-x_i)^\top$ (i.e., we make a dummy matrix of dimension $K_j$ where for the lower predictors we eliminate the first column and for the upper predictors we eliminate the last column) and $\boldsymbol \psi_j=(\boldsymbol \theta_j, \boldsymbol \beta_j)^\top$. The relevant derivatives are:
+Assume $\tilde x^\text{upper}_{i,j} = (0,1,..,-\boldsymbol x_i)^\top$ and $\tilde x^\text{lower}_{i,j} = (1,0,..,-x_i)^\top$ (i.e., we make a dummy matrix of dimension $K_j$ where for the lower predictors we eliminate the first column and for the upper predictors we eliminate the last column) and $\boldsymbol \psi_j=(\boldsymbol \theta_j, \boldsymbol \beta_j)^\top$. The relevant derivatives are:
 
 $$
-\frac{\partial\textrm{neglog}\mathcal L^j_{i}}{\boldsymbol \psi_j}=-\frac{1}{\Phi\left( \psi_j^\top \tilde x^u_i\right)-\Phi\left(\psi_j^\top \tilde x^l_i\right)}(\phi(\psi_j^\top \tilde x^u_i)\tilde x^u_i - \phi(\psi_j^\top \tilde x^l_i)\tilde x^l_i)
+\frac{\partial\textrm{neglog}\mathcal L^j_{i}}{\boldsymbol \psi_j}=-\frac{1}{\Phi\left( \psi_j^\top \tilde x^\text{upper}_{i,j}\right)-\Phi\left(\psi_j^\top \tilde x^\text{lower}_{i,j}\right)}(\phi(\psi_j^\top \tilde x^\text{upper}_i)\tilde x^\text{upper}_{i,j} - \phi(\psi_j^\top \tilde x^\text{lower}_{i,j})\tilde x^\text{lower}_{i,j})
 $$
 
 ### Gaussian responses
@@ -145,10 +145,10 @@ $$
 \textrm{neglog}\mathcal L^{k,l}_{i} = -\log\left(\Phi_2(U_k, U_l,\rho) - \Phi_2(U_k, L_l,\rho) -\Phi_2(U_l, L_k,\rho)+\Phi_2(L_k, L_l,\rho) \right)
 $$
 where
-$U_k = \psi_k^\top \tilde x^u_i$,
-$L_k = \psi_k^\top \tilde x^l_i$,
-$U_l = \psi_l^\top \tilde x^u_i$,
-$L_l =\psi_l^\top \tilde x^l_i$. 
+$U_k = \psi_k^\top \tilde x^\text{upper}_{i,k}$,
+$L_k = \psi_k^\top \tilde x^\text{lower}_{i,k}$,
+$U_l = \psi_l^\top \tilde x^\text{upper}_{i,l}$,
+$L_l =\psi_l^\top \tilde x^\text{lower}_{i,l}$. 
 
 Let $p^{k,l} = \Phi_2(U_k, U_l,\rho) - \Phi_2(U_k, L_l,\rho) -\Phi_2(U_l, L_k,\rho)+\Phi_2(L_k, L_l,\rho)$. 
 
@@ -160,19 +160,19 @@ $$
 and 
 $$
 \frac{\partial\Phi_2(x, y, \rho)}{\partial \rho} = \frac{1}{2\pi\sqrt{1-\rho^2}}
-\exp\left(\frac{-x^2 - 2\rho xy + y^2}{2(1-\rho^2)}\right)
+\exp\left(\frac{-x^2 - 2\rho xy + y^2}{2(1-\rho^2)}\right).
 $$
 
 The relevant derivatives are:
 \begin{align*}
-\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\boldsymbol \psi_k}&=-\frac{1}{p^{k,l}}\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_k}\cdot \tilde x^u_i - \frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial U_k}\cdot \tilde x^u_i - \frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial L_k}\cdot \tilde x^l_i + \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_k}\cdot \tilde x^l_i\right)\\
-&=-\frac{1}{p^{k,l}}\left(\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_k} - \frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial U_k}\right)\cdot \tilde x^u_i -  \left(\frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial L_k}\right) - \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_k}\cdot \tilde x^l_i\right)\\
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\boldsymbol \psi_k}&=-\frac{1}{p^{k,l}}\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_k}\cdot \tilde x^\text{upper}_{i,k} - \frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial U_k}\cdot \tilde x^\text{upper}_{i,k} - \frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial L_k}\cdot \tilde x^\text{lower}_{i,k} + \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_k}\cdot \tilde x^\text{lower}_{i,k}\right)\\
+&=-\frac{1}{p^{k,l}}\left(\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_k} - \frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial U_k}\right)\cdot \tilde x^\text{upper}_{i,k} -  \left(\frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial L_k} - \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_k}\right)\cdot \tilde x^\text{lower}_{i,k}\right)\\
 \end{align*}
 
 
 \begin{align*}
-\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\boldsymbol \psi_l}&=-\frac{1}{p^{k,l}}\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_l}\cdot \tilde x^u_i - \frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial L_l}\cdot \tilde x^l_i - \frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial U_l}\cdot \tilde x^u_i + \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_l}\cdot \tilde x^l_i\right)\\
-&=-\frac{1}{p^{k,l}}\left(\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_l} - \frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial U_l}\right)\cdot \tilde x^u_i -  \left(\frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial L_l}\right) - \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_l}\cdot \tilde x^l_i\right)\\
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\boldsymbol \psi_l}&=-\frac{1}{p^{k,l}}\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_l}\cdot \tilde x^\text{upper}_{i,l} - \frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial L_l}\cdot \tilde x^\text{lower}_{i,l} - \frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial U_l}\cdot \tilde x^\text{upper}_{i,l} + \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_l}\cdot \tilde x^\text{lower}_{i,l}\right)\\
+&=-\frac{1}{p^{k,l}}\left(\left(\frac{\partial\Phi_2(U_k,U_l,\rho)}{\partial U_l} - \frac{\partial\Phi_2(U_l,L_k,\rho)}{\partial U_l}\right)\cdot \tilde x^\text{upper}_{i,l} -  \left(\frac{\partial\Phi_2(U_k,L_l,\rho)}{\partial L_l}\right) - \frac{\partial\Phi_2(L_l,L_k,\rho)}{\partial L_l}\cdot \tilde x^\text{lower}_{i,l}\right)\\
 \end{align*}
 
 \begin{align*}
@@ -234,19 +234,19 @@ $$
 $$
 Given that
 $$
-\eta^u_c = \frac{\psi_k^\top \tilde x^u_i - \frac{\rho}{\sigma_l}(y_{il}-\beta^{*\top}_lx^*_i)}{\sqrt{1-\rho^2}}
+\eta^u_c = \frac{\psi_k^\top \tilde x^\text{upper}_i - \frac{\rho}{\sigma_l}(y_{il}-\beta^{*\top}_lx^*_i)}{\sqrt{1-\rho^2}}
 $$
 we have
 $$
-\frac{\partial\eta^u_c}{\partial \bm\psi_k} = \frac{1}{\sqrt{1-\rho^2}}\tilde x^u_i.
+\frac{\partial\eta^u_c}{\partial \bm\psi_k} = \frac{1}{\sqrt{1-\rho^2}}\tilde x^\text{upper}_i.
 $$
 Similarly, 
 $$
-\frac{\partial\eta^l_c}{\partial \bm\psi_k} = \frac{1}{\sqrt{1-\rho^2}}\tilde x^l_i.
+\frac{\partial\eta^l_c}{\partial \bm\psi_k} = \frac{1}{\sqrt{1-\rho^2}}\tilde x^\text{lower}_i.
 $$
 Putting it all together:
 $$
-\frac{\partial \textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \bm\psi_k} = - \frac{1}{p^{k,l}_c} \left(\phi(\eta^u_c) \frac{1}{\sqrt{1-\rho^2}}\tilde x^u_i - \phi(\eta^l_c) \frac{1}{\sqrt{1-\rho^2}}\tilde x^l_i\right).
+\frac{\partial \textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \bm\psi_k} = - \frac{1}{p^{k,l}_c} \left(\phi(\eta^u_c) \frac{1}{\sqrt{1-\rho^2}}\tilde x^\text{upper}_i - \phi(\eta^l_c) \frac{1}{\sqrt{1-\rho^2}}\tilde x^\text{lower}_i\right).
 $$
 Now for the coefficients of the normal variable $\beta^*_l$
 $$
@@ -269,15 +269,15 @@ For the correlation parameter of the pair:
 $$
 \frac{\partial \textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \rho} = -\frac{1}{p^{k,l}_c} \left(\phi(\eta^u_c) \frac{\partial\eta^u_c}{\partial \rho} -\phi(\eta^l_c)\frac{\partial\eta^l_c}{\partial \rho}\right)
 $$
-where let $g^u(\rho)=\psi_k^\top \tilde x^u_i - \frac{\rho}{\sigma_l}(y_{il}-\beta^{*\top}_lx^*_i)$ and $h(\rho)=\sqrt{1-\rho^2}$, $\partial h(\rho)/\partial \rho = - \rho/\sqrt{1-\rho^2}$.
+where let $g^u(\rho)=\psi_k^\top \tilde x^\text{upper}_i - \frac{\rho}{\sigma_l}(y_{il}-\beta^{*\top}_lx^*_i)$ and $h(\rho)=\sqrt{1-\rho^2}$, $\partial h(\rho)/\partial \rho = - \rho/\sqrt{1-\rho^2}$.
 
 $$
-\frac{\partial\eta^u_c}{\partial \rho} =\frac{(\sqrt{1-\rho^2})
- (y_{il} - \beta_l^{*\top} x^*_i)/\sigma_l + \rho/\sqrt{1-\rho^2}\cdot g^u(\rho)}{1-\rho^2}=\frac{(y_{il} - \beta_l^{*\top} x^*_i)/\sigma_l}{\sqrt{1-\rho^2}} + \frac{\rho \eta^u_c}{1-\rho^2}
+\frac{\partial\eta^u_c}{\partial \rho} =\frac{-(\sqrt{1-\rho^2})
+ (y_{il} - \beta_l^{*\top} x^*_i)/\sigma_l + \rho/\sqrt{1-\rho^2}\cdot g^u(\rho)}{1-\rho^2}=-\frac{(y_{il} - \beta_l^{*\top} x^*_i)/\sigma_l}{\sqrt{1-\rho^2}} + \frac{\rho \eta^u_c}{1-\rho^2}
 $$
 and 
 $$
-\frac{\partial\eta^l_c}{\partial \rho} =\frac{(y_{il} - \beta_l^{*\top} x^*_i)/\sigma_l}{\sqrt{1-\rho^2}} + \frac{\rho \eta^l_c}{1-\rho^2}
+\frac{\partial\eta^l_c}{\partial \rho} =-\frac{(y_{il} - \beta_l^{*\top} x^*_i)/\sigma_l}{\sqrt{1-\rho^2}} + \frac{\rho \eta^l_c}{1-\rho^2}
 $$
 
 Finally, for the standard deviation parameter of the normal:
