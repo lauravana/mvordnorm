@@ -1,9 +1,9 @@
-d_rect <- function(Uk, Ul, Lk, Ll, r,
+d_rect <- function(U1, U2, L1, L2, r,
                    dUmat, dLmat, d_biv_fun) {
-  UU <- d_biv_fun(Uk, Ul, r)
-  UL <- d_biv_fun(Uk, Ll, r)
-  LU <- d_biv_fun(Lk, Ul, r)
-  LL <- d_biv_fun(Lk, Ll, r)
+  UU <- d_biv_fun(U1, U2, r)
+  UL <- d_biv_fun(U1, L2, r)
+  LU <- d_biv_fun(L1, U2, r)
+  LL <- d_biv_fun(L1, L2, r)
   ((UU - UL) * dUmat  - (LU - LL) * dLmat)
 }
 
@@ -11,7 +11,7 @@ d_corr_rect <- function(Uk, Ul, Lk, Ll, r, fun) {
   fun(Uk, Ul, r) - fun(Uk, Ll, r) - fun(Lk, Ul, r) + fun(Lk, Ll, r)
 }
 
-dF2dx <- function(x, y, r) dnorm(x) * pnorm((y - r * x)/sqrt(1 - r^2))
+dF2dx <- function(x1, x2, r) dnorm(x1) * pnorm((x2 - r * x1)/sqrt(1 - r^2))
 
 dF2dr <- function(x, y, r){
   1/(2 * pi * sqrt(1 - r^2)) *
@@ -166,16 +166,14 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       pos_beta_l <- sum(ntheta) + ndimn + l + ndim * (1:p - 1)
 
       gradmat[indkl, c(pos_theta_k, pos_beta_k)] <- - 1/pr * d_rect(
-        Uk = Uk, Lk = Lk,
-        Ul = Ul, Ll= Ll,
+        U1 = Uk, L1 = Lk,
+        U2 = Ul, L2= Ll,
         r = rkl,
         dUmat = XUk,
         dLmat = XLk,
         d_biv_fun = dF2dx)
       gradmat[indkl, c(pos_theta_l, pos_beta_l)] <- - 1/pr * d_rect(
-        Uk = Ul, Lk = Ll,
-        Ul = Uk, Ll= Lk,
-        r = rkl,
+        U1 = Ul, L1 = Ll, U2 = Uk, L2 = Lk, r = rkl,
         dUmat = XUl,
         dLmat = XLl,
         d_biv_fun = dF2dx)
@@ -190,7 +188,6 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
     if (all(response_types[c(k,l)] != "ordinal")) {
       kidn <- which(idn == k)
       lidn <- which(idn == l)
-      Xnkl <- Xn[indkl, ]
       smat <- diag(2)
       smat[1,2] <- smat[2, 1] <- rkl
       smat <- tcrossprod(sigman[c(kidn, lidn)]) * smat
@@ -198,13 +195,23 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       ###############################
       ## dbeta0 and dbeta for pair kl
       ###############################
-      B_star_kl <- cbind(beta0n, beta_mat[c(k,l),])
-      dbeta <- lapply(indkl, function(i){
-        (2 * tcrossprod(Xn[i, ], y[i, c(k,l)])  -
-         2 * tcrossprod(Xn[i, ], B_star_kl %*% Xn[i, ])) %*% smatinv
-      })
-      dbetak <- t(sapply(dbeta, function(x) x[, 1]))
-      dbetal <- t(sapply(dbeta, function(x) x[, 2]))
+ #     B_star_kl <- cbind(beta0n, beta_mat[c(k,l),])
+#      dbeta <- lapply(indkl, function(i){
+#        (2 * tcrossprod(Xn[i, ], y[i, c(k,l)])  -
+#         2 * tcrossprod(Xn[i, ], B_star_kl %*% Xn[i, ])) %*% smatinv
+#      })
+#      dbetak <- t(sapply(dbeta, function(x) x[, 1]))
+#      dbetal <- t(sapply(dbeta, function(x) x[, 2]))
+      epsk <- (y[indkl, k] - eta_n[indkl, kidn])
+      epsl <- (y[indkl, l] - eta_n[indkl, lidn])
+      A <- epsk^2/sigman[kidn]^2 - 2*rkl*epsk*epsl/(sigman[kidn]*sigman[lidn]) +
+        epsl^2/sigman[lidn]^2
+
+      dbetak <-  - Xn[indkl, ] * 1/sigma_c *
+        (epsk/(sigman[kidn]^2) - rkl * epsl/(sigman[kidn] * sigman[lidn]))
+
+      dbetal <-  - Xn[indkl, ] * 1/sigma_c *
+        (epsl/(sigman[lidn]^2) - rkl * epsk/(sigman[lidn] * sigman[kidn]))
 
       ###############################
       ## dtheta and dbeta for pair kl
@@ -218,26 +225,21 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       ## dcorr and dsigma
       ##################
       # see https://stats.stackexchange.com/questions/27436/how-to-take-derivative-of-multivariate-normal-density
-      dLdSigma <- do.call("rbind", lapply(indkl, function(j){
-        SinvxxtSinv <- smatinv %*% tcrossprod(y[j, c(k,l)] - eta_n[j, c(kidn, lidn)]) %*% smatinv
-        res <- (1/2 * (2 * smatinv - diag(diag(smatinv)) - 2 * SinvxxtSinv + diag(diag(SinvxxtSinv))))
-        res[lower.tri(res, diag = TRUE)] # it is symmetric, we only need the lower triangle
-      }))
-      f1 <- function(pars) {
-        sigma <- pars[1:2]
-        r <- pars[3]
-        Sigma <- matrix(c(sigma[1]^2,
-                          r*sigma[1]*sigma[2],
-                          r*sigma[1]*sigma[2],
-                          sigma[2]^2), ncol = 2)
-        c(Sigma[lower.tri(Sigma, diag = TRUE)])
-      }
-      dSigmadR <- numDeriv::jacobian(f1, x = c(sigman[c(kidn, lidn)], rkl))
-      dLdR <- tcrossprod(dLdSigma,  dSigmadR)
-
+      # dLdSigma <- do.call("rbind", lapply(indkl, function(j){
+      #   SinvxxtSinv <- smatinv %*% tcrossprod(y[j, c(k,l)] - eta_n[j, c(kidn, lidn)]) %*% smatinv
+      #   res <- (1/2 * (2 * smatinv - diag(diag(smatinv)) - 2 * SinvxxtSinv + diag(diag(SinvxxtSinv))))
+      #   res[lower.tri(res, diag = TRUE)] # it is symmetric, we only need the lower triangle
+      # }))
+      # dSigmadR <- matrix(c(2 * sigman[kidn], 0, 0,
+      #     rkl * sigman[lidn],rkl * sigman[kidn], sigman[kidn] * sigman[lidn],
+      #     0, 2 * sigman[lidn], 0), byrow = TRUE, ncol = 3)
+      # dLdR <- tcrossprod(dLdSigma,  dSigmadR)
+      dsigmak <- 1/sigman[kidn] + (- epsk^2/(sigman[kidn]^3) + rkl * epsk * epsl/(sigman[kidn]^2 * sigman[lidn]))/sigma_c
+      dsigmal <- 1/sigman[lidn] + (- epsl^2/(sigman[lidn]^3) + rkl * epsk * epsl/(sigman[kidn] * sigman[lidn]^2))/sigma_c
+      dr <- -rkl/sigma_c + rkl/(2*sigma_c^3)*A - epsl*epsk/((sigman[kidn]*sigman[lidn]))
       pos_sdn_kl <- sum(ntheta) + ndimn + ndim * p + c(kidn, lidn)
       pos_r_kl   <- sum(ntheta) + 2 * ndimn + ndim * p + x$rpos
-      gradmat[indkl, c(pos_sdn_kl, pos_r_kl)] <- dLdR
+      gradmat[indkl, c(pos_sdn_kl, pos_r_kl)] <- cbind(dsigmak, dsigmal, dr)
     }
 
     ## CASE 3: 1 normals + 1 ordinal
