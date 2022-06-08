@@ -1,6 +1,6 @@
 ## DATASETS
 #' @title Data set toy example
-#' @description A simulated data set containing 8 variables (5 responses variables and 3 covariates).
+#' @description A simulated data set containing 7 variables (4 responses variables and 3 covariates).
 #' \itemize{
 #'   \item \code{z1} numeric, gaussian response variable
 #'   \item \code{z2} numeric, gaussian response variable
@@ -22,29 +22,35 @@ NULL
 #' @importFrom ordinal clm
 #' @importFrom numDeriv hessian grad
 #' @importFrom pbivnorm pbivnorm
-#' @importFrom mvtnorm dmvnorm
 #' @importFrom Matrix bdiag nearPD
+#' @importFrom optimx optimx
+#' @importFrom Formula Formula as.Formula
+#' @importFrom mvtnorm rmvnorm
+
 
 
 #############################################################################################
 #' @title Fitting a multivariate model of mixed normal and ordinal responses
 #' @description mvordnorm is used to fit a multivariate model of mixed normal and ordinal random variables. Probit link is used for the ordinal models
-#' @param formula A formula as in the Formula package?
-#' @param data data
+#' @param formula A formula as in the Formula package
+#' @param data data frame
 #' @param response_types a (named) vector of characters. Each element of the vector is
 #'  either "gaussian" or "ordinal".
-#' @param na.action eliminate NAs or keep them
+#' @param na.action a function which indicates what should happen when the data contain NAs.
 #' @param weights  weights which need to be constant across multiple measurements. Negative weights are not allowed.
 #' @param offset this can be used to specify an a priori known component to be included in the linear predictor during fitting.
 #' @param contrasts an optional list. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
-#' @param control  list of parameters for controlling the fitting process. See \code{\link{mixoglmm.control}} for details.
+#' @param control  list of parameters for controlling the fitting process. See \code{\link{mvordnorm.control}} for details.
 #' @param ...  additional arguments.
 #' @return an object of class mvordnorm
 #' @examples
-#' sum(1:10)
 #'
 #' \dontrun{
-#' sum("a")
+#' library("mvordnorm")
+#' data("data_toy", package = "mvordnorm")
+#' fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3", data = data_toy,
+#'                 response_types = c("ordinal", "ordinal","gaussian", "gaussian"),
+#'                 control = mvordnorm.control(se = TRUE, solver = "CG"))
 #' }
 #' @export
 #'
@@ -274,10 +280,10 @@ print.summary.mvordnorm <- function(summary.output, ...){
 #' @title Control function for mvordnorm()
 #' @description Control arguments are set.
 # #' @param start.values.beta vector of (optional) starting values for the regression coefficients.
-#' @param solver name of solver.
 # #' @param scale If \code{scale = TRUE}, then for each response the corresponding covariates of \code{\link{class}} \code{"numeric"} are standardized before fitting,
 # #'  i.e., by substracting the mean and dividing by the standard deviation.
-#' @param se logical, should standard errors be calculated?
+#' @param se logical, indicating whether standard errors should be calculated.
+#' @param solver name of solver to be used by optimx.
 #' @export
 mvordnorm.control <- function(se = TRUE, solver = "CG") {
 #   if (is.null(solver.nlminb.control$eval.max)) solver.nlminb.control$eval.max <- 10000
@@ -297,11 +303,3 @@ mvordnorm.control <- function(se = TRUE, solver = "CG") {
 #' @export
 vcov.mvordnorm <- function(object, ...) object$vcov
 
-#' #' #' @title Number of units in the GLMM with mixed responses.
-#' #' #' @description \code{nobs} is a generic function which extracts the number of units in the GLMM with mixed responses.
-#' #' #' @param object an object of class \code{'mixoglmm'}.
-#' #' #' @param ... further arguments passed to or from other methods.
-#' #' #' @method nobs mixoglmm
-#' #' #' @export
-#' #' nobs.mixoglmm <- function(object, ...) object$dims$N
-#' #'

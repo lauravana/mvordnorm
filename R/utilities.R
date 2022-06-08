@@ -44,7 +44,7 @@ rectbiv_norm_prob <- function(U, L, r) {
 
 make_start_values <- function(y, X, family_type) {
   start_theta <- lapply(which(family_type == "ordinal"),
-                        function(j) coef(ordinal::clm(factor(y[, j]) ~ 1)))
+                        function(j) ordinal::clm(factor(y[, j]) ~ 1)$beta)
   ndim <- ncol(y)
   p <- ncol(X)
   pars <- c(unlist(lapply(start_theta, function(x) c(x[1], log(diff(x))))),

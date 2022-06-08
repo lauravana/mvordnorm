@@ -82,7 +82,12 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     res_deriv_ana <- derivs_ana(obj$parOpt, y, X, response_types,
                                 ind_univ, combis_fast)
     V <- n/(n - NCOL(res_deriv_ana$V)) * res_deriv_ana$V  ## correct for degrees of freedom
-    H.inv <- tryCatch(chol2inv(chol(res_deriv_ana$H)))
+    H.inv <- tryCatch(chol2inv(chol(res_deriv_ana$H)), error=function(e) NA)
+    if (length(H.inv) == 1 && is.na(H.inv)) {
+      warning("Hessian is not positive semi-definite. Approximating to nearest PD matrix.")
+      Happrox <- Matrix::nearPD(res_deriv_ana$H)$mat
+      H.inv <- chol2inv(chol(Happrox))
+    }
     obj$vcov <- H.inv %*% V %*% H.inv
     # cat("Computing variability and hessian matrix numerically.\n")
     # ## Compute Hessian numerically
@@ -283,115 +288,115 @@ neg_log_lik_joint <- function(pars, response_types, y, X,
   - sum(log_pl_vec_h) - sum(univ_nll)
 }
 
-
-neg_log_lik_joint_i <- function(pars, response_types, yi, Xi,
-                              ntheta, p, ndimo, ndimn, ndim,
-                              idn, ido,
-                              ind_univ,
-                              combis_fast) {
-
-  ## thresholds
-  thetas <- lapply(1:sum(response_types == "ordinal"), function(j) {
-    transf_thresholds_flexible(pars[cumsum(c(0, ntheta))[j] + seq_len(ntheta[j])])
-  })
-
-
-  ## regression coefs: intercepts for normals
-  beta0n <- pars[sum(ntheta) + seq_len(ndimn)] # we need intercepts for the normal variables
-  ## common regression coefs
-  beta <- pars[sum(ntheta) + ndimn + seq_len(ndim * p)]
-  ## sd parameters for normals
-  sigman <- exp(pars[sum(ntheta) + ndimn + ndim * p + seq_len(ndimn)])
-  ## correlations error structure
-  tparerror <- pars[(sum(ntheta) + ndimn + ndim * p + ndimn + seq_len(ndim * (ndim - 1)/2))]
-  rvec <- transf_sigma(tparerror, ndim)
-
-  beta_mat <- beta
-  dim(beta_mat) <- c(ndim, p)
-  #print(beta_mat)
-  Xbeta <- tcrossprod(X, beta_mat)
-
-  eta_u_o <- sapply(1:ndimo, function(j)
-    c(thetas[[j]], 1e06)[yi[ido[j]]] - Xbeta[,ido[j]])
-
-  eta_l_o <- sapply(1:ndimo, function(j)
-    drop(c(-1e06, thetas[[j]])[yi[ido[j]]] - Xbeta[,ido[j]]))
-
-  eta_n <- sapply(1:ndimn, function(j) {
-    beta0n[j] + Xbeta[,idn[j]]
-  })
-
-  log_pl_vec_h <- unlist(sapply(combis_fast, function(x) {
-    k <- x$combis[1]
-    l <- x$combis[2]
-    id <- x$ind_i
-
-    r <- rvec[x$rpos]
-    ## CASE 1: 2 ordinals
-    if (all(response_types[c(k,l)] == "ordinal")) {
-      kido <- which(ido == k)
-      lido <- which(ido == l)
-      prs <- rectbiv_norm_prob(U = eta_u_o[ c(kido, lido), drop = FALSE],
-                               L = eta_l_o[ c(kido, lido), drop = FALSE], r)
-
-      prs[prs < .Machine$double.eps] <- .Machine$double.eps
-
-      log_pl_vec <- (log(prs))
-    }
-
-    ## CASE 2: 2 normals
-    if (all(response_types[c(k,l)] != "ordinal")) {
-      kidn <- which(idn == k)
-      lidn <- which(idn == l)
-      ykstd <-  (y[k] - eta_n[kidn, drop = FALSE])
-      ylstd  <- (y[l] - eta_n[lidn, drop = FALSE])
-      smat <- diag(2)
-      smat[1,2] <- smat[2, 1] <- r
-      smat <- tcrossprod(sigman[c(kidn, lidn)]) * smat
-      log_pl_vec <-  sum(mvtnorm::dmvnorm(x = c(ykstd, ylstd),
-                                          mean = rep(0, 2),
-                                          sigma = smat,
-                                          log = TRUE))
-    }
-
-    ## CASE 3: ordinal + normal
-    if (response_types[k] != response_types[l]) {
-      ko <- c(k,l)[which(response_types[c(k,l)] == "ordinal")]
-      kn <- c(k,l)[which(response_types[c(k,l)] != "ordinal")]
-      knidn <- which(idn == kn)
-      koido <- which(ido == ko)
-      ld_marg <- dnorm(y[kn],
-                       mean = eta_n[knidn],
-                       sd = sigman[knidn],
-                       log = TRUE)
-
-      sd_yn_cond <- sqrt(1 - r^2)
-
-      eta_cond <-  Xbeta[, ko] +
-        r * (y[kn] - eta_n[knidn, drop = FALSE]) / sigman[knidn]
-
-      eta_u_cond <- (c(thetas[[koido]],  1e06)[y[ko]] - eta_cond)/sd_yn_cond
-      eta_l_cond <- (c(-1e06, thetas[[koido]])[y[ko]] - eta_cond)/sd_yn_cond
-
-      p_cond <- pnorm(eta_u_cond) - pnorm(eta_l_cond)
-      p_cond[p_cond < .Machine$double.eps] <- .Machine$double.eps
-      log_pl_vec <-  (log(p_cond) + ld_marg)
-    }
-    log_pl_vec
-
-  }))
-  # This are the observations which have only one response (aka univariate)
-  colu <- ind_univ[, 2] # col of univariate
-  rowu <- ind_univ[, 1] # row of univariate
-  idn_univ <- cbind(rowu, match(colu, idn))
-  ido_univ <- cbind(rowu,  match(colu, ido))
-  ndens <- dnorm(y[cbind(rowu, colu)],
-                 eta_n[idn_univ],
-                 sigman[match(colu, idn)], log =TRUE)
-  lndens <-  ifelse(is.na(ndens), 0, ndens)
-  odens  <- log(pnorm(eta_u_o[ido_univ]) - pnorm(eta_l_o[ido_univ]))
-  lodens <-  ifelse(is.na(odens), 0, odens)
-  univ_nll <- lndens + lodens
-  ## Final neg log lik
-  - sum(log_pl_vec_h) - sum(univ_nll)
-}
+#
+# neg_log_lik_joint_i <- function(pars, response_types, yi, Xi,
+#                               ntheta, p, ndimo, ndimn, ndim,
+#                               idn, ido,
+#                               ind_univ,
+#                               combis_fast) {
+#
+#   ## thresholds
+#   thetas <- lapply(1:sum(response_types == "ordinal"), function(j) {
+#     transf_thresholds_flexible(pars[cumsum(c(0, ntheta))[j] + seq_len(ntheta[j])])
+#   })
+#
+#
+#   ## regression coefs: intercepts for normals
+#   beta0n <- pars[sum(ntheta) + seq_len(ndimn)] # we need intercepts for the normal variables
+#   ## common regression coefs
+#   beta <- pars[sum(ntheta) + ndimn + seq_len(ndim * p)]
+#   ## sd parameters for normals
+#   sigman <- exp(pars[sum(ntheta) + ndimn + ndim * p + seq_len(ndimn)])
+#   ## correlations error structure
+#   tparerror <- pars[(sum(ntheta) + ndimn + ndim * p + ndimn + seq_len(ndim * (ndim - 1)/2))]
+#   rvec <- transf_sigma(tparerror, ndim)
+#
+#   beta_mat <- beta
+#   dim(beta_mat) <- c(ndim, p)
+#   #print(beta_mat)
+#   Xbeta <- tcrossprod(X, beta_mat)
+#
+#   eta_u_o <- sapply(1:ndimo, function(j)
+#     c(thetas[[j]], 1e06)[yi[ido[j]]] - Xbeta[,ido[j]])
+#
+#   eta_l_o <- sapply(1:ndimo, function(j)
+#     drop(c(-1e06, thetas[[j]])[yi[ido[j]]] - Xbeta[,ido[j]]))
+#
+#   eta_n <- sapply(1:ndimn, function(j) {
+#     beta0n[j] + Xbeta[,idn[j]]
+#   })
+#
+#   log_pl_vec_h <- unlist(sapply(combis_fast, function(x) {
+#     k <- x$combis[1]
+#     l <- x$combis[2]
+#     id <- x$ind_i
+#
+#     r <- rvec[x$rpos]
+#     ## CASE 1: 2 ordinals
+#     if (all(response_types[c(k,l)] == "ordinal")) {
+#       kido <- which(ido == k)
+#       lido <- which(ido == l)
+#       prs <- rectbiv_norm_prob(U = eta_u_o[ c(kido, lido), drop = FALSE],
+#                                L = eta_l_o[ c(kido, lido), drop = FALSE], r)
+#
+#       prs[prs < .Machine$double.eps] <- .Machine$double.eps
+#
+#       log_pl_vec <- (log(prs))
+#     }
+#
+#     ## CASE 2: 2 normals
+#     if (all(response_types[c(k,l)] != "ordinal")) {
+#       kidn <- which(idn == k)
+#       lidn <- which(idn == l)
+#       ykstd <-  (y[k] - eta_n[kidn, drop = FALSE])
+#       ylstd  <- (y[l] - eta_n[lidn, drop = FALSE])
+#       smat <- diag(2)
+#       smat[1,2] <- smat[2, 1] <- r
+#       smat <- tcrossprod(sigman[c(kidn, lidn)]) * smat
+#       log_pl_vec <-  sum(mvtnorm::dmvnorm(x = c(ykstd, ylstd),
+#                                           mean = rep(0, 2),
+#                                           sigma = smat,
+#                                           log = TRUE))
+#     }
+#
+#     ## CASE 3: ordinal + normal
+#     if (response_types[k] != response_types[l]) {
+#       ko <- c(k,l)[which(response_types[c(k,l)] == "ordinal")]
+#       kn <- c(k,l)[which(response_types[c(k,l)] != "ordinal")]
+#       knidn <- which(idn == kn)
+#       koido <- which(ido == ko)
+#       ld_marg <- dnorm(y[kn],
+#                        mean = eta_n[knidn],
+#                        sd = sigman[knidn],
+#                        log = TRUE)
+#
+#       sd_yn_cond <- sqrt(1 - r^2)
+#
+#       eta_cond <-  Xbeta[, ko] +
+#         r * (y[kn] - eta_n[knidn, drop = FALSE]) / sigman[knidn]
+#
+#       eta_u_cond <- (c(thetas[[koido]],  1e06)[y[ko]] - eta_cond)/sd_yn_cond
+#       eta_l_cond <- (c(-1e06, thetas[[koido]])[y[ko]] - eta_cond)/sd_yn_cond
+#
+#       p_cond <- pnorm(eta_u_cond) - pnorm(eta_l_cond)
+#       p_cond[p_cond < .Machine$double.eps] <- .Machine$double.eps
+#       log_pl_vec <-  (log(p_cond) + ld_marg)
+#     }
+#     log_pl_vec
+#
+#   }))
+#   # This are the observations which have only one response (aka univariate)
+#   colu <- ind_univ[, 2] # col of univariate
+#   rowu <- ind_univ[, 1] # row of univariate
+#   idn_univ <- cbind(rowu, match(colu, idn))
+#   ido_univ <- cbind(rowu,  match(colu, ido))
+#   ndens <- dnorm(y[cbind(rowu, colu)],
+#                  eta_n[idn_univ],
+#                  sigman[match(colu, idn)], log =TRUE)
+#   lndens <-  ifelse(is.na(ndens), 0, ndens)
+#   odens  <- log(pnorm(eta_u_o[ido_univ]) - pnorm(eta_l_o[ido_univ]))
+#   lodens <-  ifelse(is.na(odens), 0, odens)
+#   univ_nll <- lndens + lodens
+#   ## Final neg log lik
+#   - sum(log_pl_vec_h) - sum(univ_nll)
+# }

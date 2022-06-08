@@ -17,14 +17,14 @@ mvordnorm(
 )
 }
 \arguments{
-\item{formula}{A formula as in the Formula package?}
+\item{formula}{A formula as in the Formula package}
 
-\item{data}{data}
+\item{data}{data frame}
 
 \item{response_types}{a (named) vector of characters. Each element of the vector is
 either "gaussian" or "ordinal".}
 
-\item{na.action}{eliminate NAs or keep them}
+\item{na.action}{a function which indicates what should happen when the data contain NAs.}
 
 \item{weights}{weights which need to be constant across multiple measurements. Negative weights are not allowed.}
 
@@ -32,7 +32,7 @@ either "gaussian" or "ordinal".}
 
 \item{contrasts}{an optional list. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.}
 
-\item{control}{list of parameters for controlling the fitting process. See \code{\link{mixoglmm.control}} for details.}
+\item{control}{list of parameters for controlling the fitting process. See \code{\link{mvordnorm.control}} for details.}
 
 \item{...}{additional arguments.}
 }
@@ -43,9 +43,12 @@ an object of class mvordnorm
 mvordnorm is used to fit a multivariate model of mixed normal and ordinal random variables. Probit link is used for the ordinal models
 }
 \examples{
-sum(1:10)
 
 \dontrun{
-sum("a")
+library("mvordnorm")
+data("data_toy", package = "mvordnorm")
+fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3", data = data_toy,
+                response_types = c("ordinal", "ordinal","gaussian", "gaussian"),
+                control = mvordnorm.control(se = TRUE, solver = "CG"))
 }
 }

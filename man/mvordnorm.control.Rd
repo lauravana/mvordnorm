@@ -2,24 +2,15 @@
 % Please edit documentation in R/mvordnorm.R
 \name{mvordnorm.control}
 \alias{mvordnorm.control}
-\title{Summary method for mixoglmm.}
+\title{Control function for mvordnorm()}
 \usage{
-\method{summary}{mixoglmm}(se = TRUE, solver = "CG")
+mvordnorm.control(se = TRUE, solver = "CG")
 }
 \arguments{
-\item{se}{logical, should standard errors be calculated?}
+\item{se}{logical, indicating whether standard errors should be calculated.}
 
-\item{solver}{name of solver.}
-
-\item{object}{object of class \code{'mixoglmm'}}
-
-\item{call}{displays function call if \code{TRUE}}
-
-\item{...}{further arguments passed to or from other methods.}
+\item{solver}{name of solver to be used by optimx.}
 }
 \description{
-Summary of thresholds, regression coefficients
-and parameters of the error structure of class \code{'mixoglmm'}.
-
 Control arguments are set.
 }

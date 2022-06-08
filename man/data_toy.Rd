@@ -11,7 +11,7 @@ A data frame with 1000 rows and 7 variables
 data("data_toy", package = "mvordnorm")
 }
 \description{
-A simulated data set containing 8 variables (5 responses variables and 3 covariates).
+A simulated data set containing 7 variables (4 responses variables and 3 covariates).
 \itemize{
   \item \code{z1} numeric, gaussian response variable
   \item \code{z2} numeric, gaussian response variable
