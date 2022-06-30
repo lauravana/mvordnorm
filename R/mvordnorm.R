@@ -198,10 +198,11 @@ summary.mvordnorm <- function(object, call = FALSE, ...)
                            c("logLik", round(-object$res$value,2)))
    pars <- object$parameters
    cf <- unlist(object$parameters)
-   if (is.null(object$vcov)) {
+   vcovmat <- object$H.inv %*% object$V %*% object$H.inv
+   if (is.null(vcovmat)) {
      se <- NA
    } else {
-     se <- sqrt(diag(object$vcov))
+     se <- sqrt(diag(vcovmat))
    }
    cf <- cbind(cf, se, cf/se, 2 * pnorm(-abs(cf/se)))
    colnames(cf) <- c("Estimate", "Std. Error", "z value", "Pr(>|z|)")
