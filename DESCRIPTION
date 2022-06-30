@@ -4,17 +4,20 @@ Title: Multivariate Models for Mixed Ordinal and Normal Responses in R
 Version: 0.0.1
 Author: Laura Vana, Rainer Hirk 
 Maintainer: Laura Vana <laura.vana@tuwien.ac.at>
-Description: R package mvordnorm implements composite likelihood estimation in a multivariate regression 
-  model of continuous and ordinal variables. For the ordinal responses, marginally ordinal probit regression 
-  model is employed. A regression model with normally distributed errors is employed for the continuous 
-  responses. The dependence among the multiple responses is modeled by assuming that the normally distributed 
-  variables and the latent variables underlying the ordinal responses come from a multivariate distribution 
-  with a general correlation structure. In addition, regression coefficients (and threshold parameters for 
-  the ordinal responses) are varying across the multiple response dimensions.
+Description: R package mvordnorm implements composite likelihood estimation in 
+  a multivariate regression model of continuous and ordinal variables. For the 
+  ordinal responses, marginally ordinal probit regression model is employed. 
+  A regression model with normally distributed errors is employed for the 
+  continuous responses. The dependence among the multiple responses is modeled 
+  by assuming that the normally distributed variables and the latent variables 
+  underlying the ordinal responses come from a multivariate distribution 
+  with a general correlation structure. In addition, regression coefficients
+  (and threshold parameters for the ordinal responses) are varying across the 
+  multiple response dimensions.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.0.9000
 Depends:
     R (>= 3.5.0)
 Imports: 

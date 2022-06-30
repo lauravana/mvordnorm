@@ -9,26 +9,20 @@ mvordnorm(
   data,
   response_types = NULL,
   na.action,
-  weights,
-  offset = NULL,
   contrasts = NULL,
   control = mvordnorm.control(),
   ...
 )
 }
 \arguments{
-\item{formula}{A formula as in the Formula package}
+\item{formula}{A formula as \link[Formula]{Formula}}
 
 \item{data}{data frame}
 
-\item{response_types}{a (named) vector of characters. Each element of the vector is
+\item{response_types}{a (named) vector of characters with length equal to the number of responses. Each element of the vector is
 either "gaussian" or "ordinal".}
 
 \item{na.action}{a function which indicates what should happen when the data contain NAs.}
-
-\item{weights}{weights which need to be constant across multiple measurements. Negative weights are not allowed.}
-
-\item{offset}{this can be used to specify an a priori known component to be included in the linear predictor during fitting.}
 
 \item{contrasts}{an optional list. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.}
 
@@ -40,7 +34,7 @@ either "gaussian" or "ordinal".}
 an object of class mvordnorm
 }
 \description{
-mvordnorm is used to fit a multivariate model of mixed normal and ordinal random variables. Probit link is used for the ordinal models
+mvordnorm is used to fit a multivariate model of mixed normal and ordinal random variables. Probit link is used for the ordinal responses.
 }
 \examples{
 

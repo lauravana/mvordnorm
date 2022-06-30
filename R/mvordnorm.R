@@ -31,14 +31,14 @@ NULL
 
 #############################################################################################
 #' @title Fitting a multivariate model of mixed normal and ordinal responses
-#' @description mvordnorm is used to fit a multivariate model of mixed normal and ordinal random variables. Probit link is used for the ordinal models
-#' @param formula A formula as in the Formula package
+#' @description mvordnorm is used to fit a multivariate model of mixed normal and ordinal random variables. Probit link is used for the ordinal responses.
+#' @param formula A formula as \link[Formula]{Formula}
 #' @param data data frame
-#' @param response_types a (named) vector of characters. Each element of the vector is
+#' @param response_types a (named) vector of characters with length equal to the number of responses. Each element of the vector is
 #'  either "gaussian" or "ordinal".
 #' @param na.action a function which indicates what should happen when the data contain NAs.
-#' @param weights  weights which need to be constant across multiple measurements. Negative weights are not allowed.
-#' @param offset this can be used to specify an a priori known component to be included in the linear predictor during fitting.
+# #' @param offset a list of length equal to the number of responses. This can be used to specify an a priori known component to be included in the linear predictor for each response
+# #'  during fitting. Each element of the list must be of length equal to
 #' @param contrasts an optional list. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
 #' @param control  list of parameters for controlling the fitting process. See \code{\link{mvordnorm.control}} for details.
 #' @param ...  additional arguments.
@@ -56,8 +56,7 @@ NULL
 #'
 mvordnorm <- function(formula, data,
                       response_types = NULL,
-                      na.action, weights,
-                      offset = NULL,
+                      na.action,
                       contrasts = NULL,
                       control = mvordnorm.control(),
                       ...) {
@@ -65,7 +64,7 @@ mvordnorm <- function(formula, data,
   call <- match.call()
   if(missing(data)) data <- environment(formula)
   mf <- match.call(expand.dots = FALSE)
-  m <- match(c("formula", "data", "subset", "na.action", "weights"), names(mf), 0L)
+  m <- match(c("formula", "data", "subset", "na.action"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
 
@@ -301,5 +300,17 @@ mvordnorm.control <- function(se = TRUE, solver = "CG") {
 #' @param ... further arguments passed to or from other methods.
 #' @method vcov mvordnorm
 #' @export
-vcov.mvordnorm <- function(object, ...) object$vcov
+vcov.mvordnorm <- function(object, ...) object$H.inv %*% object$V %*% object$H.inv
 
+#' @title Pairwise Log-Likelihood of Multivariate Models with Ordinal and Gaussian Responses.
+#' @description
+#' \code{logLik} is a generic function which extracts the pairwise log-likelihood from objects of class \cr
+#' \code{'mvordnorm'}.
+#' @param object an object of class \code{'mvordnorm'}.
+#' @param ... further arguments passed to or from other methods.
+#' @method logLik mvordnorm
+#' @export
+logLik.mvordnorm <- function(object, ...) {
+  structure(-object$objective,
+            df = sum(diag(object$V %*% object$H.inv)), class = "logLik")
+}

@@ -5,7 +5,6 @@ TODOs
 * constraints on thetas
 * logit link
 * different correlation structures - now only the general one is supported.
-* Missings
-* types of thresholds - now fix first zero.
+* types of thresholds - now flexible
 * Weights
 * implement checks for the columns - if types fits to response

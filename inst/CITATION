@@ -1,0 +1,11 @@
+citHeader("To cite mvordnorm in publications use:")
+
+citEntry(
+  entry    = "Manual",
+  title    = "mvordnorm: Multivariate Models for Mixed Ordinal and Normal Responses in R",
+  author   = "Laura Vana and Rainer Hirk",
+  year     = 2022,
+  url      = "https://github.com/lauravana/mvordnorm",
+  note     = "R package version:~0.0.1",
+  textVersion = "Laura Vana and Rainer Hirk (2022). mvordnorm: Multivariate Models for Mixed Ordinal and Normal Responses in R. R package version 0.0.1."
+)

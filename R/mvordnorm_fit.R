@@ -42,6 +42,7 @@ mvordnorm_fit <- function(y, X, # w,  offset,
                       y, X, ntheta, p, ndimo, ndimn, ndim,
                       idn, ido, ind_univ, combis_fast),
     method = control$solver)
+  obj$objective <- obj$res[["value"]]
   ## TODO
   obj$parOpt <- unlist(obj$res[seq_along(start_values)])
   obj$combis_fast <- combis_fast
@@ -88,85 +89,10 @@ mvordnorm_fit <- function(y, X, # w,  offset,
       Happrox <- Matrix::nearPD(res_deriv_ana$H)$mat
       H.inv <- chol2inv(chol(Happrox))
     }
-    obj$vcov <- H.inv %*% V %*% H.inv
-    # cat("Computing variability and hessian matrix numerically.\n")
-    # ## Compute Hessian numerically
-    # tparHess <- numDeriv::hessian(function(par)
-    #   neg_log_lik_joint(par, response_types, y, X, ntheta,
-    #                     p, ndimo, ndimn, ndim, idn, ido,
-    #                     ind_univ, combis_fast),
-    #   obj$parOpt)
-    #
-    # # diag(solve(tparHess))
-    #
-    # cat("Hessian: Done.\n")
-    # jac_list <- jac_dttheta_dtheta_flexible(thetas,
-    #                                          ndimo, ntheta) ## d ttheta/d theta
-    # jac_list[ndimo + seq_len(ndimn)] <- 1 ## d tbeta0/dbeta0
-    # jac_list[ndim + seq_len(ndim * p)] <- 1 ## d tbeta/dbeta
-    # jac_list[[ndim + ndim * p + 1]] <- diag(ndimn, x = 1/sigman) ## d tsigma/dsigma
-    # jac_list[[ndim + ndim * p + 2]]<- jac_dtr_dr(rvec, ndim) # d tr/dr
-    #
-    # jac_list_inv <- jac_dtheta_dttheta_flexible(tparTheta,
-    #                                         ndimo, ntheta) ## d theta/d ttheta
-    # jac_list_inv[ndimo + seq_len(ndimn)] <- 1 ## d beta0/dtbeta0
-    # jac_list_inv[ndim + seq_len(ndim * p)] <- 1 ## d ttbeta/dtbeta
-    # jac_list_inv[[ndim + ndim * p + 1]] <- diag(ndimn, x = sigman) ## d sigma/dtsigma
-    # jac_list_inv[[ndim + ndim * p + 2]]<- jac_dr_dtr(tparerror, ndim) # d tr/dr
-    #
-    #
-    # J <- as.matrix(Matrix::bdiag(jac_list))
-    # J.inv <- as.matrix(Matrix::bdiag(jac_list_inv))# solve(J)
-    #
-    # H <- crossprod(J, tparHess) %*% J
-    # Vi_num <- matrix(0, ncol = length(tpar), nrow = n)
-    #
-    # # u <- numDeriv::grad(function(par)
-    # #   neg_log_lik_joint(par, response_types,
-    # #                     y, X,
-    # #                     ntheta, p, ndimo, ndimn, ndim,
-    # #                     idn, ido,
-    # #                     ind_univ = ind_univ,
-    # #                     combis_fast = combis_fast),
-    # #   obj$parOpt,
-    # #   method = "Richardson") # score
-    # #
-    # # V <- n/(n - length(tpar)) * crossprod(crossprod(u, J.inv))
-    # for (i in seq_len(n)) {
-    #   if (i %% 100 == 0)  cat('Computed gradient for', i, 'out of', n,'subjects\n')
-    #   y_pos_nona <- which(!is.na(y[i,]))
-    #   if (length(y_pos_nona) == 1) {
-    #     ind_univ_i <- matrix(c(1, y_pos_nona), nrow = 1, ncol = 2)
-    #     combis_fast_i <- NULL
-    #   } else {
-    #     ind_univ_i <- matrix(nrow = 0, ncol = 2)
-    #     comb_i_tmp <- combn(y_pos_nona,  2, simplify = FALSE)
-    #     combis_fast_i <- lapply(comb_i_tmp, function(x)
-    #       list(combis = x,
-    #            ind_i = 1,
-    #            rpos = which(apply(combis, 2, function(k) all(x==k)))))
-    #   }
-    #   Vi_num[i, ] <- numDeriv::grad(function(par)
-    #     neg_log_lik_joint(par, response_types,
-    #                       y[i, ], X[i, ],
-    #                       ntheta, p, ndimo, ndimn, ndim,
-    #                       idn, ido,
-    #                       ind_univ = ind_univ_i,
-    #                       combis_fast = combis_fast_i),
-    #     obj$parOpt,
-    #     method = "simple")
-    # }
-    #
-    # cat("Variability matrix: Done.\n")
-    # Vi_num <-  Vi_num %*% J.inv
-    # V <- n/(n - length(tpar)) * crossprod(Vi_num)
-    # H.inv <- tryCatch(chol2inv(chol(H)),
-    #                   error=function(e) {
-    #                     warning("\nCondition number close to zero! Hessian is approximated by nearest positive semidefinite matrix.\n")
-    #                     chol2inv(chol(Matrix::nearPD(H)$mat))
-    #                   }
-    # )
-    #obj$vcov <- H.inv %*% V %*% H.inv
+    obj$H.inv <-  H.inv
+    obj$V <- V
+    obj$claic <- 2 * obj$res[["value"]] + 2 * sum(diag(V %*% H.inv))
+    obj$clbic <- 2 * obj$res[["value"]] + log(n) * sum(diag(V %*% H.inv))
   }
 
   obj
