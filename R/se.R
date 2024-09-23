@@ -131,6 +131,7 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
     indkl <- x$ind_i
     ## correlation
     rkl <- rvec[x$rpos]
+    sigma_c <- sqrt(1 - rkl^2)
     k <- comb[1]
     l <- comb[2]
     gradmat <- matrix(0,
@@ -188,13 +189,14 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
     if (all(response_types[c(k,l)] != "ordinal")) {
       kidn <- which(idn == k)
       lidn <- which(idn == l)
-      smat <- diag(2)
-      smat[1,2] <- smat[2, 1] <- rkl
-      smat <- tcrossprod(sigman[c(kidn, lidn)]) * smat
-      smatinv <- chol2inv(chol(smat))
+      #smat <- diag(2)
+      #smat[1,2] <- smat[2, 1] <- rkl
+      #smat <- tcrossprod(sigman[c(kidn, lidn)]) * smat
+      #smatinv <- chol2inv(chol(smat))
       ###############################
       ## dbeta0 and dbeta for pair kl
       ###############################
+      sigma_c2 <- sigma_c^2
  #     B_star_kl <- cbind(beta0n, beta_mat[c(k,l),])
 #      dbeta <- lapply(indkl, function(i){
 #        (2 * tcrossprod(Xn[i, ], y[i, c(k,l)])  -
@@ -207,10 +209,10 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       A <- epsk^2/sigman[kidn]^2 - 2*rkl*epsk*epsl/(sigman[kidn]*sigman[lidn]) +
         epsl^2/sigman[lidn]^2
 
-      dbetak <-  - Xn[indkl, ] * 1/sigma_c *
+      dbetak <-  - Xn[indkl, ] * 1/sigma_c2 *
         (epsk/(sigman[kidn]^2) - rkl * epsl/(sigman[kidn] * sigman[lidn]))
 
-      dbetal <-  - Xn[indkl, ] * 1/sigma_c *
+      dbetal <-  - Xn[indkl, ] * 1/sigma_c2 *
         (epsl/(sigman[lidn]^2) - rkl * epsk/(sigman[lidn] * sigman[kidn]))
 
       ###############################
@@ -234,9 +236,9 @@ derivs_ana <- function(pars, y, X, response_types, ind_univ,
       #     rkl * sigman[lidn],rkl * sigman[kidn], sigman[kidn] * sigman[lidn],
       #     0, 2 * sigman[lidn], 0), byrow = TRUE, ncol = 3)
       # dLdR <- tcrossprod(dLdSigma,  dSigmadR)
-      dsigmak <- 1/sigman[kidn] + (- epsk^2/(sigman[kidn]^3) + rkl * epsk * epsl/(sigman[kidn]^2 * sigman[lidn]))/sigma_c
-      dsigmal <- 1/sigman[lidn] + (- epsl^2/(sigman[lidn]^3) + rkl * epsk * epsl/(sigman[kidn] * sigman[lidn]^2))/sigma_c
-      dr <- -rkl/sigma_c + rkl/(2*sigma_c^3)*A - epsl*epsk/((sigman[kidn]*sigman[lidn]))
+      dsigmak <- 1/sigman[kidn] + (- epsk^2/(sigman[kidn]^3) + rkl * epsk * epsl/(sigman[kidn]^2 * sigman[lidn]))/sigma_c2
+      dsigmal <- 1/sigman[lidn] + (- epsl^2/(sigman[lidn]^3) + rkl * epsk * epsl/(sigman[kidn] * sigman[lidn]^2))/sigma_c2
+      dr <- -rkl/sigma_c2 + rkl/(sigma_c2^2)*A - 1/sigma_c2 * epsl*epsk/(sigman[kidn]*sigman[lidn])
       pos_sdn_kl <- sum(ntheta) + ndimn + ndim * p + c(kidn, lidn)
       pos_r_kl   <- sum(ntheta) + 2 * ndimn + ndim * p + x$rpos
       gradmat[indkl, c(pos_sdn_kl, pos_r_kl)] <- cbind(dsigmak, dsigmal, dr)

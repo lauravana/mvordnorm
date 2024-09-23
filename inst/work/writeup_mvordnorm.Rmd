@@ -1,108 +1,622 @@
 ---
-title: "Writeup mvordnorm"
+title: "A joint model of correlated ordinal and continuous variables"
+subtitle: "Working paper"
+author: "Laura Vana and Rainer Hirk"
 output: pdf_document
 header-includes:
   - \usepackage{bm}
+  - \usepackage{pdfpages}
+  - \usepackage{hyperref}
+  - \usepackage{xcolor}
+  - \usepackage{booktabs}
+  - \usepackage{multicol}
+  - \newcommand{\proglang}[1]{\textbf{\texttt{#1}}}
+  - \newcommand{\pkg}[1]{\textbf{#1}}
+  - \newcommand{\code}[1]{\texttt{#1}}
+  - \hypersetup{colorlinks=true, citecolor=blue, linkcolor=blue, urlcolor=magenta}
+bibliography: refs.bib
 ---
 
-# Model
+# Introduction
 
-We propose a joint model of continuous and ordinal variables. Let's assume we 
+The analysis of mixed type responses is a relevant topic in various fields of
+research where one often jointly collects various continuous, binary
+or ordinal outcomes possibly  with some observations missing. 
+
+The joint modeling of outcomes is sometimes preferred over a separate 
+analysis of the different responses given that the association between 
+different outcomes can be captured is capture by the joint model
+specification. The advantage of this approach is that answers to various 
+research questions can be obtained in one go, thus eliminating the need for
+multi-step procedures to combine results  from various separate analyses.
+
+Various approaches have been proposed for building such joint models.
+The random effects approach relies on specifying correlated random effects among the
+different outcomes [@ivanova2016mixed]. Conditional on the random effects, the responses are assumed to
+be independent. Another popular approach is assuming a multivariate distribution 
+directly on the errors of the model corresponding to the different responses.
+
+In this paper we build a joint model which can accommodate for binary, 
+ordinal and continuous responses, by assuming that the errors of the continuous
+variables and the errors underlying the ordinal and binary outcomes follow a 
+multivariate normal distribution. We employ composite likelihood methods to
+estimate the model parameters and use composite likelihood inference for 
+model comparison and uncertainty quantification.
+The complimentary R package **mvordnorm** implements estimation of this model 
+using composite likelihood methods and is available for
+download from Github.
+We present two use-cases in the area of risk management to illustrate our approach.
+The first illustration uses
+a data set containing defaults, ratings and CDS spreads for US listed companies.
+Moreover, we have also identified this framework to be useful 
+for the modelling of ESG ratings and continuous ESG scores, which have been show to
+have low comparability and integration [@berg2019aggregate], so the second application relies on
+a data set containing
+ESG ratings from three data providers: RepRisk, Sustainalytics and Refinitiv.
+As covariates we use financial variables identified by the literature to be 
+relevant in explaining the above mentioned measures.
+In our exercises we show  promising results related to the performance of the 
+joint model for both the credit risk and the ESG risk application.
+
+
+The paper is organized as follows:
+Section 2 presents the joint model and 
+Section 3 discusses the estimation procedure using composite likelihood methods.
+The software implementation is described in Section 4.
+The modeling approach is illustrated on two use-cases in Section 5. Section 6 concludes.
+
+# Model      {#sect:model}
+
+We propose a joint model of continuous and ordinal variables. Assume we 
 have $q_n$ continuous responses and $q_o$ ordinal responses (in total $q=q_n+q_o$).
 
-For the continuous variables $\boldsymbol y^n_{1},\ldots, \boldsymbol y^n_{q_n}$  have 
+For the continuous responses $\boldsymbol y^n_{1},\ldots, \boldsymbol y^n_{q_n}$ 
+we assume the following regression model: 
 $$
-y^n_{ij} = \beta_{0j} + \beta_j^\top x_i + \sigma_j \epsilon^n_{ij}
+y^n_{ij} = \beta_{0j} + \bm\beta_j^\top \bm x_i + \sigma_j \epsilon^n_{ij}
 $$
-For the ordinal variables  $\boldsymbol y^o_{1},\ldots, \boldsymbol y^o_{q_o}$ have 
+for all observations $i=1,\ldots,n$ and $j=1,\ldots,q_n$ where 
+$\bm x_i$ is a $(p\times 1)$ vector of covariates, $\bm\beta_j$ is a $(p\times 1)$ vector of response-specific regression coefficients, $\sigma_j$ is a response-specific scale parameter and $\epsilon^n_{ij}$ is a mean-zero error term.
+
+For the ordinal variables  $\boldsymbol y^o_{1},\ldots, \boldsymbol y^o_{q_o}$ a regression model is assumed on the latent variable $\tilde{\bm y}$ underlying the ordinal observations:
 $$
-\tilde y^o_{ij} = \beta_j^\top x_i + \epsilon^o_{ij}
+\tilde y^o_{ij} =\bm \beta_j^\top \bm x_i + \epsilon^o_{ij},
 $$
+where the observed responses are obtained by slotting the continuous latent variables using appropriate threshold parameters.
 $$
-y^o_{ij} = r \Rightarrow \theta_{j, r-1}\leq \tilde y^o_{ij}\leq \theta_{j, r}
+y^o_{ij} = r \Rightarrow \theta_{j, r-1}\leq \tilde y^o_{ij}\leq \theta_{j, r}, \quad r\in \{1, \ldots, K_j\} \quad  -\infty\equiv\theta_{j, 0} <\theta_{j, 1}<\ldots<\theta_{j, K}\equiv \infty,
 $$
-The jointness is captured by assuming that the continuous and the latent variables
+where $K_j$ denotes the number of categories for ordinal response $j=1, \ldots, q_o$.
+
+The dependence is captured by assuming that the errors of the continuous and the latent variables
 of the ordinals come from a multivariate normal distribution:
 $$
-(\boldsymbol\epsilon^o_{i}, \boldsymbol\epsilon^n_{ij})^\top \sim N(0, R)
+(\boldsymbol\epsilon^o_{i}, \boldsymbol\epsilon^n_{ij})^\top \sim N(\bm 0, R)
 $$
+with mean zero and correlation matrix $R$. Note that the matrix is restricted to have diagonal elements equal to one due to identifiability restrictions for the ordinal variables.
 
-# Pairwise likelihood
+# Pairwise likelihood {#sect:pl}
 
-Assume we collect all $q$ responses in a matrix $Y$.
-The pairwise likelihood is given by:
-
+Assume we collect all $q$ responses in a matrix $Y$ of dimension
+$(n\times q)$ and that there are no missing values in the response
+matrix.
+The pairwise log-likelihood is given by the sum of the bivariate likelihoods over all pairs of responses $k=1,\ldots,q$ and $l > k$:
 $$
-p\ell(\Theta; Y, X) =\sum_{i=1}^n \sum_{k,l} f(y_{ik}, y_{il})
+p\ell(\Theta; Y, X) =\sum_{i=1}^n \sum_{k<l} \ell(\Theta; y_{ik}, y_{il}).
 $$
+The bivariate log-likelihoods can be split into three cases, depending on the type of the responses $k$ and $l$: 
+
+* Case 1: both responses are ordinal
+
+* Case 2: both responses are normal
+
+* Case 3: one response is ordinal, one normal
 
 
-We have three cases:
-
-* both responses are ordinal
-
-* both responses are normal
-
-* one response is ordinal, one normal
-
-
-## Both responses are ordinal
-
+For *Case 1*, the bivariate log-likelihood is given by the bivariate probability $\Pr(y_{ik}=r_{ik}, y_{il} = r_{il})$:
 $$
-f(y_{ik}, y_{il}) = Pr(y_{ik}=r_{ik}, y_{il} = r_{il}) = \int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} \phi_2(\tilde y_{ik} - \beta_k^\top x_i, \tilde y_{il} - \beta_k^\top x_i; \rho_{kl}) d\tilde y_{ik}d\tilde y_{il} = 
+\ell(\Theta; y_{ik}, y_{il})=\Pr(y_{ik}=r_{ik}, y_{il} = r_{il}) = 
+\int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} 
+\phi_2(\tilde y_{ik} -\bm \beta_k^\top \bm x_i, \tilde y_{il} - \bm\beta_k^\top \bm x_i; \rho_{kl}) d\tilde y_{ik}d\tilde y_{il},
 $$
-Let's denote by 
-$U_{i,k} = \theta_{k, r_{ik}} - \beta_k^\top x_i$ ,
-$L_{i,k} = \theta_{k, r_{ik}-1} - \beta_k^\top x_i$,
-$U_{i,l} = \theta_{k, r_{il}} - \beta_l^\top x_i$,
-$L_{i,l} = \theta_{k, r_{ik}-1} - \beta_l^\top x_i$. We then have the rectangular probability:
+where $\rho_{kl}$ is the correlation coefficient between responses $k$ and $l$ and
+$\phi_2$ is
+the bivariate standard normal probability density function. 
+By denoting
+$U_{i,k} = \theta_{k, r_{ik}} -\bm \beta_k^\top \bm x_i$ ,
+$L_{i,k} = \theta_{k, r_{ik}-1} - \bm \beta_k^\top \bm x_i$,
+$U_{i,l} = \theta_{k, r_{il}} - \bm \beta_l^\top \bm x_i$,
+$L_{i,l} = \theta_{k, r_{ik}-1} - \bm \beta_l^\top \bm x_i$, 
+the bivariate probability is equal to:
 $$
-=\Phi_2\left(U_{i,k}, U_{i,l};  \rho_{kl} \right)-\Phi_2\left(L_{i,k}, U_{i,l};  \rho_{kl} \right)-\Phi_2\left(U_{i,k}, L_{i,l};  \rho_{kl} \right)
+\Pr(y_{ik}=r_{ik}, y_{il} = r_{il})=\Phi_2\left(U_{i,k}, U_{i,l};  \rho_{kl} \right)-\Phi_2\left(L_{i,k}, U_{i,l};  \rho_{kl} \right)-\Phi_2\left(U_{i,k}, L_{i,l};  \rho_{kl} \right)
 +\Phi_2\left(L_{i,k}, L_{i,l};  \rho_{kl} \right)
 $$
-where $\rho_{kl}$ is the correlation coefficient between responses $k$ and $l$ and $\phi_2$ is
-the bivariate standard normal pdf and $\Phi_2$ is the bivariate standard normal cdf .
+where $\Phi_2$ is the bivariate standard normal cumulative distribution function.
 
-## Both responses are continuous.
-
+For *Case 2*, where both responses are continuous, the bivariate log-likelihood is given by the bivariate standard normal density:
 $$
-f(y_{ik}, y_{il}) = \phi_2\left(\frac{y_{ik} - \beta_{0k} -\beta_k^\top x_i}{\sigma_k}, \frac{y_{il} - \beta_{0l} -\beta_l^\top x_i}{\sigma_l}; \rho_{kl}) \right)
+\ell(\Theta; y_{ik}, y_{il}) = f(y_{ik}, y_{il}|\Theta)= \phi_2\left(\frac{y_{ik} - \beta_{0k} -\bm\beta_k^\top \bm x_i}{\sigma_k}, \frac{y_{il} - \beta_{0l} -\bm\beta_l^\top \bm x_i}{\sigma_l}; \rho_{kl}) \right)
 $$
 
-## One response is ordinal, one continuous.
-
-Slightly abusing notation we assume the $k$th response is ordinal and the $l$ th 
-is continuous.
+Finally, for *Case 3*, where one response is ordinal and one response is continuous, the bivariate log-likelihood is given 
+by the product of a conditional probability and the  density
+of the continuous response. Assuming that the $k$-th response is ordinal and
+the $l$-th is continuous, we have:
 $$
-f(y^o_{ik}, y^n_{il}) = f(y^o_{ik} | y^n_{il})f(y^n_{il})
+\ell(\Theta; y_{ik}, y_{il}) = \Pr(y_{ik}=r_{ik} | y^n_{il}) f(y_{il})
 $$
-where $f(y^n_{il})$ is the marginal standard normal pdf $\phi\left(\frac{y^n_{il} - \beta_{0l} -\beta_l^\top x_i}{\sigma_l} \right)$. 
-The conditional term is:
+where $f(y_{il})$ is the marginal standard normal pdf $\phi\left(\frac{y^n_{il} - \beta_{0l} -\bm\beta_l^\top \bm x_i}{\sigma_l} \right)$. 
+The conditional probability is given by :
 $$
-f(y^o_{ik} | y^n_{il}) = Pr(y^o_{ik}=r_{ik} | y^n_{il}) = Pr(\theta_{k, r_{ik}-1}\leq \tilde y^o_{ik}\leq \theta_{k, r_{ik}} | y^n_{il})
+\Pr(y_{ik}=r_{ik} | y_{il}) = \Pr(\theta_{k, r_{ik}-1}\leq \tilde y_{ik}\leq \theta_{k, r_{ik}} | y_{il}).
 $$
-
-Given that $\tilde y^o_{ik}$ and $y^n_{il}$ are bivariate normals we have:
-
+Using the fact that  $\tilde y_{ik}$ and $y_{il}$ are bivariate normals, we can easily derive the conditional distribution
 $$
-\tilde y^o_{ik} | y^n_{il} \sim N\left(\underbrace{\beta_k^\top x_i + \frac{\rho_{kl}}{\sigma_l}(y^n_{il} - \beta_{0l} -\beta_l^\top x_i)}_{\mu_c}, \underbrace{(1 - \rho_{kl}^2)}_{\sigma_c^2}\right)
+\tilde y_{ik} | y_{il} \sim N\left(\underbrace{\bm\beta_k^\top \bm x_i + \frac{\rho_{kl}}{\sigma_l}(y_{il} - \beta_{0l} -\bm\beta_l^\top \bm x_i)}_{\mu_c}, \underbrace{(1 - \rho_{kl}^2)}_{\sigma_c^2}\right)
 $$
-So
+and the corresponding conditional probability:
 $$
-f(y^o_{ik} | y^n_{il}) = Pr(\theta_{k, r_{ik}-1}\leq \tilde y^o_{ik}\leq \theta_{k, r_{ik}} | y^n_{il})=
-\int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} \phi\left(\frac{\tilde y^o_{ik} - \mu_c}{\sigma_c}\right) d\tilde y^o_{ik} = 
-\Phi\left(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}\right)-\Phi\left(\frac{\theta_{k, r_{ik}-1} - \mu_c}{\sigma_c}\right)
+\Pr(y_{ik}=r_{ik} | y_{il})=
+\int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} \phi\left(\frac{\tilde y_{ik} - \mu_c}{\sigma_c}\right) d\tilde y_{ik} = 
+\Phi\left(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}\right)-\Phi\left(\frac{\theta_{k, r_{ik}-1} - \mu_c}{\sigma_c}\right).
 $$
 
+The standard errors of the parameters we computed using the Godambe information 
+matrix  and model comparison can be performed using modified version of Akaike and 
+Bayesian information criteria [for more details see @pub:mvord:Hirk+Hornik+Vana:2020]
 
-# Standard errors
+###### Missing values
+Note that the framework is easily extended to allow for the presence of 
+missing values in the responses. For each observation $i$, in the calculation
+of the pairwise log-likelihood, we consider all
+pairs of *observed responses*. In case for some observations only one response is 
+available, we consider the likelihood of the univariate observed response.
+For the continuous responses this is the standard normal pdf $\phi\left(\frac{y^n_{ik} - \beta_{0k} -\bm\beta_k^\top \bm x_i}{\sigma_l} \right)$ while for the ordinal 
+responses we have the univariate probability 
+$\Pr(y_{ik}=r_{ik})=\Phi(U_{i,k}) - \Phi(L_{i,k})$
 
-## Univariate case
+# Software implementation {#sect:soft}
+
+The model is implemented in package **mvordnorm**.
+The main function for fitting the models is `mvordnorm()`.
+```{r eval=FALSE}
+mvordnorm(formula, data, response_types = NULL, na.action,
+  contrasts = NULL, control = mvordnorm.control(), ...)
+```
+
+The main arguments are:
+
+* `formula`: a formula object of class `"Formula"`, as implemented in 
+   the **Formula** package [@jssFormula], which makes it easy to specify
+   multiple responses, especially if these are not numeric or of mixed type.
+
+* `data`: a data frame which contains the different responses in separate columns.
+
+* `response_types`:  a (named) vector of characters with length equal to the number of responses. Each element of the vector is either `"gaussian"` or `"ordinal"`.
+
+* `na.action`: a function which indicates what should happen when the data contain NAs.
+
+* `contrasts`: an optional list. See the `contrasts.arg` of `model.matrix.default`.
+
+* `control`: list of parameters for controlling the fitting process such as the 
+general purpose solver to be used or whether standard errors should be calculated.
+
+For illustration purposes in section we use a worked example based on a simulated data set consisting of
+1000 subjects for which two multiple ordinal responses
+(`y1` and `y2`), two continuous responses
+(`z1` and `z2`) and three covariates (`x1`, `x2` and `x3`) are available. The ordinal responses each
+have three categories labeled with 1, 2 and 3.
+
+```{r echo=TRUE}
+library("mvordnorm")
+data("data_toy", package = "mvordnorm")
+dim(data_toy)
+head(data_toy)
+```
+
+In order to estimate the model using the CG solver in **optimx** [@jssoptimx], 
+we have the following function call:
+```{r}
+fit <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3", data = data_toy,
+          response_types = c("ordinal", "ordinal","gaussian", "gaussian"),
+          control = mvordnorm.control(se = TRUE, solver = "CG"))
+```
+Note that the formula specifies no intercept is to be estimated, this is however
+due to the intercept not being identifiable in ordinal regression. For the normal 
+variables, an intercept will be computed by default. This peculiarity of the 
+implementation should be improved in future versions of the package, to allow the
+user to specify outcome specific intercepts.
+
+The `summary` method produces an output which is similar to the one of most
+regression models, and contains information on the thresholds for ordinal responses and intercepts for the continuous response, on the outcome specific regression
+coefficients, on the scale parameters for the continuous variables and the correlation
+matrix $R$.
+```{r}
+summary(fit)
+```
+The `summary` method produces an output which is similar to the one of most
+regression models. 
+
+If a model should be fit to data containing missing values, the `na.action` argument 
+should be set to `na.pass`. We introduce some NAs in `data_toy`:
+```{r}
+data_toy$y1[sample(1:nrow(data_toy), 20)] <- NA
+data_toy$y2[sample(1:nrow(data_toy), 20)] <- NA
+```
+The function call is:
+```{r}
+fit_with_NAs <- mvordnorm("y1 + y2 + z1 + z2 ~ 0 + X1 + X2 + X3", data = data_toy,
+                          na.action = na.pass,
+                          response_types = c("ordinal", "ordinal","gaussian", "gaussian"),
+                          control = mvordnorm.control(se = TRUE, solver = "CG"))
+summary(fit_with_NAs)
+```
+
+
+# Empirical analysis {#sect:empirical}
+
+In the empirical analysis we present two use-cases. The first use-case 
+uses data containing default, credit ratings and CDS spreads for a sample
+of US companies from 2003-2013. For the second use-case we collect data from 
+three ESG providers: Refinitiv, Sustainalytics and RepRisk and build a joint model
+of their ESG scores and ratings.
+
+## Credit ratings, failure and CDS data
+
+We construct a sample of Compustat/CRSP companies from US
+over the period 2003--2013.
+We use S&P long-term issuer credit ratings from the 
+Compustat-Capital IQ Credit Ratings database as well as issuer credit ratings  from Moody's 
+The failure  indicator is constructed based on the default data from the
+UCLA-LoPucki Bankruptcy Research Database and the Mergent issuer default file. 
+A binary failure indicator is constructed in the following way: a default is 
+recorded in a year if a firm filed for bankruptcy under Chapter 7 or 
+Chapter 11 or the firm receives a default rating from one of the CRAs in the year following the rating observation.
+Finally, we obtain CDS pricing data from IHS Markit via Wharton research data services (WRDS).
+We only keep CDS with a primary coupon, with a short duration of 1 year and merge
+the end-of-year spreads with the end-of-year ratings. Due to the lack of common unique identifiers
+to be used for merging and due to coverage issues we
+only observe CDS spreads over the period 2008-2013.
+
+The covariates are built using the Compustat
+and CRSP databases together with the corresponding linking files available via WRDS. 
+We exclude financial, utility and real estate firms from the data set. 
+The end-of-year ratings and 1-year CDS spread are merged to the financial ratios 
+on a calendar year basis. 
+```{r echo=FALSE}
+dat_cds <- load("CDS/data/dat_CDS_3raters_failInd.rda")
+dat_cds <- get(dat_cds)
+```
+
+In the analysis we employ the variables proposed in [@Alp2013] which include
+interest coverage, EBITDA to sales, long-term debt to total assets, 
+liabilities to assets, firm size (as percentile of firm's market capitalization  
+in the distribution of the NYSE stocks capitalization) and whether it is a 
+dividend payer, idiosyncratic  (SIGMA) and systematic risk (BETA),
+retained earnings to assets, R&D expenses to assets, cash- and tangible assets-to-assets,
+market to book assets ratio. All ratios are winsorized at 99% and, if negative values
+are present, at 1%.
+```{r echo=FALSE}
+ratios_alp <- c("R_intcov_ratio",
+                "R_opmbd", "R_dltt_at", "R_debt_at", "R_lRSIZE",
+                "R_SIGMA", "R_BETA",
+                "R_div_payer", "R_mb", "R_rd_at", "R_re_at", "R_capx_at",
+                "R_che_at", "R_ppent_at")
+#colMeans(is.na(dat_cds[, ratios_alp]))
+id_non_na <- rowSums(is.na(dat_cds[, ratios_alp])) == 0
+dat_cds <- dat_cds[id_non_na, ]
+```
+
+After eliminating missing values in the covariates, The merged sample contains `r length(unique(dat_cds$gvkey))` firms and
+`r nrow(dat_cds$gvkey)` firm-year observations.
+The rating distribution (for the aggregated ratings without modifiers)
+is shown Figure \ref{fig:rat}. We observed a mode in the BB and Baa classes 
+rating agencies, with few observations falling into the best rating classes.
+
+
+```{r, echo=FALSE, fig=TRUE,fig.cap="\\label{fig:rat} Rating distribution for the three rating agencies over the whole sample 2003-2013", fig.width=10, fig.height=4,out.width="100%"}
+op <- par(mfrow = c(1, 2))
+barplot(table(dat_cds$SPR7), las=2,main = "S&P")
+barplot(table(dat_cds$Moodys7),  las=2,main = "Moody's")
+#barplot(table(dat_cds$Fitch7),  las=2,main = "Fitch")
+par(op)
+```
+
+
+The average CDS spreads for each year are presented in Figure \ref{fig:cdsyears}.
+
+
+```{r echo=FALSE, fig=TRUE,out.width="100%", fig.cap="\\label{fig:cdsyears} Average CDS spread (full) and average default rate (dashed) over sample period 2003-2013. Note that the CDS data starts in 2008.", fig.width=7, fig.height=4, out.width="60%", fig.align="center", warning=FALSE, message=FALSE}
+library(dplyr)
+library(ggplot2)
+
+dat_cds %>%
+ # filter(as.numeric(fyear) >= 2008) %>%
+  group_by(fyear) %>%
+  summarise(avg_cds_parspread = mean(ParSpread, na.rm = TRUE),
+            avg_dr = mean(failInd, na.rm = TRUE)) %>%
+  ggplot(aes(x = as.numeric(fyear), y = avg_cds_parspread)) +
+    geom_line() +
+    geom_line(aes(x =  as.numeric(fyear), y = avg_dr), linetype = "dashed") + 
+  theme_bw() + xlab("") + ylab("") + 
+  scale_x_continuous(breaks = 2003:2013)
+```
+
+We estimate a joint model for the four responses: S&P and Moody's ratings, 
+failure indicator and the log of the CDS spread. We standardize all covariates to
+have mean zero and variance one. Therefore, the regression coefficients 
+for one outcome can be interpreted in terms of importance.
+
+```{r eval=TRUE, echo=FALSE}
+dat_cds$Moodys_num <- 8 - as.numeric(dat_cds$Moodys7)
+dat_cds$SPR_num <- 8 - as.numeric(dat_cds$SPR7)
+dat_cds$Fitch_num <- 8 - as.numeric(dat_cds$Fitch7)
+dat_cds$failInd2 <- dat_cds$failInd
+dat_cds$failInd <- dat_cds$failInd + 1
+
+set.seed(111)
+id_new_defs <- sample(which(dat_cds$failInd == 2), 
+                      1000, replace = TRUE)
+dat_cds_up <- rbind(dat_cds, dat_cds[id_new_defs, ])
+
+file_res <- "CDS/fit_SMDCDS_20220630.rda"
+if (!file.exists(file_res)) {
+  formula_mvordnorm <- sprintf(
+    "SPR_num + Moodys_num  + failInd +  log(ParSpread) ~ 0 + 
+    scale(R_intcov_ratio) + scale(R_opmbd) + scale(R_dltt_at) + 
+    scale(R_debt_at) + scale(R_lRSIZE) + scale(R_SIGMA) + scale(R_BETA) +
+    scale(R_mb) + scale(R_rd_at) + scale(R_re_at) +
+    scale(R_capx_at) + scale(R_che_at) + scale(R_ppent_at)")
+         #                      paste0("scale(", ratios_alp, ")", collapse = " + "))
+  res_cds <- mvordnorm(formula_mvordnorm, 
+                       response_types = c("ordinal", "ordinal",  "ordinal", "gaussian"),
+                       data = dat_cds_up, na.action = na.pass,
+                       control = mvordnorm.control(solver = "ucminf"))
+  save(res_cds, file = file_res)
+} else {
+  load(file_res)
+}
+```
+
+Table \ref{tab:coef} presents the estimated regression coefficients for each response
+while Figure \ref{fig:corrcds} illustrates the estimated correlation matrix among 
+the responses. We observe that almost all the variables have the expected sign. 
+The coefficients for the rating dimensions are rather similar, with size being 
+the most important variable.
+```{r coef_tab, echo = FALSE, results='asis'}
+invisible(capture.output(coef <- summary(res_cds)$coefficients))
+coef <- as.data.frame(coef)
+coef$stars <- ifelse(coef[,4] >= 0.1, "", ifelse(coef[,4] >= 0.05, ".", ifelse(coef[,4] >= 0.01, "*", ifelse(coef[,4] >= 0.05, "**",  "***"))))
+
+coef$stars[coef$stars == "."] <- ".\\phantom{**}"
+coef$stars[coef$stars == ""] <- "\\phantom{***}"
+coef$stars[coef$stars == "*"] <- "*\\phantom{**}"
+coef$stars[coef$stars == "**"] <- "**\\phantom{*}"
+
+seq_coef <- seq(1,nrow(coef), by = 4)
+tab_coef <- cbind(
+  paste0(format(round(coef[seq_coef,1],4),nsmall=4), " (", 
+         format(round(coef[seq_coef,2], 4),nsmall=4), ")", coef$stars[seq_coef]),
+  paste0(format(round(coef[seq_coef + 1,1], 4),nsmall=4), " (", 
+         format(round(coef[seq_coef + 1,2], 4),nsmall=4), ")", 
+         coef$stars[seq_coef + 1]),
+  paste0(format(round(coef[seq_coef + 2,1], 4),nsmall=4), " (", 
+         format(round(coef[seq_coef + 2,2], 4),nsmall=4), ")", 
+         coef$stars[seq_coef + 2]),
+  paste0(format(round(coef[seq_coef + 3,1], 4),nsmall=4), " (", 
+         format(round(coef[seq_coef + 3,2], 4),nsmall=4), ")", 
+         coef$stars[seq_coef + 3]))
+tab_coef <- gsub("-", "$-$", tab_coef)
+colnames(tab_coef) <- sprintf("\\multicolumn{1}{c}{%s}", 
+                              c("S\\&P", "Moody's", "Failure", "CDS"))#res_logit$rho$y.names
+rownames(tab_coef) <- c("Int.coverage", "EBITDA/sale", "LT debt/assets", "Liab/assets",
+                        "SIZE", "SIGMA",  "BETA", #"Div.payer", 
+                        "Market/book", 
+                        "R\\&D/assets", "Ret.earn./assets", "Capex/assets", "Cash/assets",
+                        "Tang./assets")
+library(xtable)
+print(xtable(tab_coef, 
+             caption = "This table displays the estimated regression coefficients for the four outcomes: S\\&P ratings, Moody's ratings, failure indicator and the log CDS spread.",
+             label = "tab:coef",
+             align = "lrrrr"), 
+      booktabs = TRUE, comment=FALSE,
+      sanitize.text.function = function(x) x)
+```
+```{r, echo=FALSE, fig=TRUE, fig.cap="\\label{fig:corrcds}Estimated correlation matrix among the response variables in the credit risk application.",out.width="50%",fig.align="center"}
+invisible(capture.output(corrpars <- as.data.frame(summary(res_cds)$corrpars)))
+corrpars_mat <- matrix(0, nrow = 4, ncol = 4)
+corrpars_mat[lower.tri(corrpars_mat)] <- corrpars[,1]
+corrpars_mat[upper.tri(corrpars_mat)] <- t(corrpars_mat)[upper.tri(corrpars_mat)] 
+
+colnames(corrpars_mat) <- rownames(corrpars_mat) <- c("S&P", "Moody's", "Failure", "CDS")
+corrplot::corrplot.mixed(corrpars_mat)
+```
+
+
+
+
+
+## ESG ratings
+
+ESG ratings and scores are observed to be rather inhomogeneous among the different
+ratings sources. There are currently more than 140 providers -- well known providers 
+include Refinitiv, Sustainalytics, RepRisk, MSCI ESG Research, S&P Global ESG Score, 
+CDP Climate, Water and Forest Scores, Bloomberg ESG Disclosures Scores, ISS Ratings and Rankings
+and ESGI.
+
+In this paper we collect historical ESG ratings and scores from Refinitiv, Sustainalytics and
+RepRisk for the constituents of the S&P 500 index in the year 2017, with access provided by our host 
+institution. We obtain financial variables from Refinitiv
+which we use as covariates in the analysis. We merge ESG indicators from all providers
+based on tickers. From  RepRisk we obtain ratings on a 
+10-point ordinal scale. From Refinitiv and Sustainalytics we
+obtains ESG scores on a continuous scale.
+
+```{r eval=TRUE, echo=FALSE}
+dat_esg <- load("ESG/esg_final.rda")
+dat_esg <- get(dat_esg)
+dat_esg$RepRisk_rating <- factor(dat_esg$RepRisk_rating, 
+                                 levels = rev(levels(dat_esg$RepRisk_rating)))
+
+
+# dat_esg$Sustainalytics_rating2 <- cut(dat_esg$total_esg_score, 
+#                                       breaks = c(0, 10, 20, 30, 40, 100), 
+#                                       #breaks = c(0, 60, 70, 80, 90, 100), 
+#                                       labels = rev(c("severe", "high", "medium", "low", "negligible")), ordered = TRUE)
+# 
+# table(dat_esg$Sustainalytics_rating2 )
+
+dat_esg$Sustainalytics_rating <- factor(dat_esg$Sustainalytics_rating, 
+                                        levels = rev(levels(dat_esg$Sustainalytics_rating)))
+#head(dat_esg)
+ratio_names <- colnames(dat_esg[, c(18:20, 22, 24, 27, 30:31, 33:34, 38, 40:41, 45:46, 48:49)])
+resp_names <- c("ESG.Combined.Score", "total_esg_score", "RepRisk_rating")
+
+id_non_na <- rowSums(is.na(dat_esg[, ratio_names])) == 0
+id_non_na_resp <- rowSums(is.na(dat_esg[, resp_names])) != 3
+dat_esg <- dat_esg[id_non_na & id_non_na_resp, ]                   
+```
+We employ 17 covariates related to financial performance, including gross profit margin, 
+EBITDA margin, asset and fixed asset turnover, income tax rate, liquidity ratios, 
+return on equity and return on capital. After eliminating missing values in the 
+covariates the data set contains `r nrow(dat_esg)`.
+
+Figure \ref{fig:esgrat} presents the distribution of the ESG scores and ratings
+for the three providers.
+
+```{r, echo=FALSE, fig=TRUE,fig.cap="\\label{fig:esgrat} Rating distribution for the three rating agencies over the whole sample 2003-2013", fig.width=10, fig.height=4,out.width="100%"}
+op <- par(mfrow = c(1, 3))
+#barplot(table(dat_esg$Sustainalytics_rating), las = 2, main = "Sustainalytics")
+barplot(table(dat_esg$RepRisk_rating),  las = 2, main = "RepRisk")
+plot(density(na.omit(dat_esg$total_esg_score)), xlim=c(0,100), las = 2, main = "Sustainalytics")
+plot(density(na.omit(dat_esg$ESG.Combined.Score)), xlim=c(0,100),  las = 2, main = "Refinitiv")
+par(op)
+```
+
+We estimate the joint model of three responses  (one ordinal and two continuous).
+Figure \ref{fig:corresg} shows the estimated correlation among the three responses. 
+The correlations among the responses are generally low, indicating a low degree of agreement among the providers [in line with @berg2019aggregate]. It is interesting to note that the there is a negative correlation among the RepRisk ratings and the
+score of the other two providers. It is to be noted that from the documentation 
+of the providers, it is difficult to grasp whether the score provided by Sustainalytics indicates the riskiness or how well the company is doing in terms of ESG metrics. 
+Also, the providers changed the scoring and rating methodology in the 
+previous years, which constitutes an additional issue when interpreting the results.
+
+
+The regression coefficients of the employed covariates (after performing a stepwise elimination of the non-significant variable, are presented in Table \ref{tab:coefesg}.
+We observe that the financial covariates have low explanatory power for the ESG scores,
+with current ratio being the only significant variable for 
+ Refinitiv's combined ESG score. In addition to the current ratio, the rate of earning retention is also relevant in explaining the total ESG score of Sustainalytics. 
+ It seems that for this sample, the covariates based on financial statements have low explanatory power for these providers. Further, more extensive experiments should however be performed.
+```{r esg_results,echo=FALSE}
+file_out <- "ESG/res_ESG_mvordnorm_20220703.rda"
+if (!file.exists(file_out)) {
+  dat_esg$Sustainalytics_rating_num <- as.numeric(dat_esg$Sustainalytics_rating)
+  dat_esg$RepRisk_rating_num <- as.numeric(dat_esg$RepRisk_rating)
+  formula_ESG <-  "total_esg_score + RepRisk_rating_num + ESG.Combined.Score ~ 0+scale(Asset.Turnover) + scale(Tot.Assets.Comm.Eqty) +scale(Earnings.Retention.Rate...)+ scale(Current.Ratio) + scale(Fixed.Asset.Turnover)"
+  #  scale(EBITDA.Margin..Percent) +   
+  #  scale(Return.on.Capital..Total.LT.Capital..Percent) + 
+  #  scale(Income.Tax.Rate...)"
+  #  scale(Earnings.Retention.Rate...) + scale(Current.Ratio) + scale(Interest.Coverage.Ratio) + 
+  #  scale(Long.Term.Debt.to.Total.Capital..Percent) + scale(A.R.Turnover) + 
+  #  scale(Fixed.Asset.Turnover) + 
+  
+  # 
+  library(mvordnorm)
+  
+  res_esg <- mvordnorm(formula = formula_ESG, 
+                       na.action = na.pass,
+                       data = dat_esg,
+                       response_types = c("gaussian", "ordinal","gaussian"),
+                       control = mvordnorm.control(se = TRUE, solver = "newuoa"))
+  save(res_esg, file = file_out)
+} else {
+  load(file_out)
+}
+```
+
+```{r coef_tab_esg, echo = FALSE, results='asis'}
+invisible(capture.output(coef <- summary(res_esg)$coefficients))
+coef <- as.data.frame(coef)
+coef$stars <- ifelse(coef[,4] >= 0.1, "", ifelse(coef[,4] >= 0.05, ".", ifelse(coef[,4] >= 0.01, "*", ifelse(coef[,4] >= 0.05, "**",  "***"))))
+
+coef$stars[coef$stars == "."] <- ".\\phantom{**}"
+coef$stars[coef$stars == ""] <- "\\phantom{***}"
+coef$stars[coef$stars == "*"] <- "*\\phantom{**}"
+coef$stars[coef$stars == "**"] <- "**\\phantom{*}"
+
+seq_coef <- seq(1,nrow(coef), by = 3)
+tab_coef <- cbind(
+  paste0(format(round(coef[seq_coef,1],4),nsmall=4), " (", 
+         format(round(coef[seq_coef,2], 4),nsmall=4), ")", 
+         coef$stars[seq_coef]),
+  paste0(format(round(coef[seq_coef + 1,1], 4),nsmall=4), " (", 
+         format(round(coef[seq_coef + 1,2], 4),nsmall=4), ")", 
+         coef$stars[seq_coef + 1]),
+  paste0(format(round(coef[seq_coef + 2,1], 4),nsmall=4), " (", 
+         format(round(coef[seq_coef + 2,2], 4),nsmall=4), ")", 
+         coef$stars[seq_coef + 2]))
+tab_coef <- gsub("-", "$-$", tab_coef)
+colnames(tab_coef) <- sprintf("\\multicolumn{1}{c}{%s}", 
+                              c("Sustainalytics", "RepRisk", "Refinitiv"))
+rownames(tab_coef) <- c("Asset turnover", "Assets/Comm.equity", "Earnings Retention Rate", "Current.Ratio",
+                        "Fixed asset turnover")
+library(xtable)
+print(xtable(tab_coef, 
+             caption = "This table displays the estimated regression coefficients for the three outcomes in the ESG application: Sustainalytics total ESG scores, RepRisk ratings and 
+             Refinitiv ESG combined scores.",
+             label = "tab:coefesg",
+             align = "lrrr"), 
+      booktabs = TRUE, comment=FALSE,
+      sanitize.text.function = function(x) x)
+```
+```{r, echo=FALSE, fig=TRUE, fig.cap="\\label{fig:corresg}Estimated correlation matrix among the response variables in the ESG application.",out.width="50%",fig.align="center"}
+invisible(capture.output(corrpars <- as.data.frame(summary(res_esg)$corrpars)))
+corrpars_mat <- matrix(0, nrow = 3, ncol = 3)
+corrpars_mat[lower.tri(corrpars_mat)] <- corrpars[,1]
+corrpars_mat[upper.tri(corrpars_mat)] <- t(corrpars_mat)[upper.tri(corrpars_mat)] 
+
+colnames(corrpars_mat) <- rownames(corrpars_mat) <- c("Sustainalytics", "RepRisk", "Refinitiv")
+corrplot::corrplot.mixed(corrpars_mat)
+```
+
+# Conclusion {#sect:concl}
+
+We propose a framework for jointly modelling continuous and ordinal responses
+by assuming that the latent variables underlying the ordinal observations and the 
+observed continuous responses follow a multivariate normal distribution.
+The estimation is performed by maximizing the pairwise likelihood. We exemplify the
+framework on two use-cases: a credit risk application which jointly looks at
+credit ratings from Moody's and S&P, failures and CDS spreads  for listed companies in the US over 2003-2013, and an ESG application
+where ESG ratings and scores for large US companies in the year 2017.
+
+
+Methodological extensions include consideration of other error distributions such as multivariate Student-$t$. 
+Moreover, for the empirical analysis it would be of interest to investigate 
+further investigate how one can incorporate both ESG and credit risk measures in such a joint model and what insights can be derived from such an approach. Finally, implementing
+an automatic model selection procedure for the multivariate model is also on the research agenda of the authors.
+
+
+#### Acknowledgments
+This research was supported by funds of the Oesterreichischen Nationalbank
+(Austrian Central Bank, Anniversary Fund, project number: 18482 ``Multivariate ordinal regression models for enhanced credit risk  modeling'').
+
+# References
+<div id="refs"></div>
+
+\newpage 
+
+# Appendix
+
+
+## Derivation of analytical standard errors 
+
+### Univariate case
 
 If for some observations only one response $j$ is observed, then we have two cases: either an ordinal response, or a continuous response.
 
 
-### Ordinal response 
+#### Ordinal response 
 The negative log-likelihood is:
 $$
 \textrm{neglog}\mathcal L^j_{i} = -\log\left(\Phi\left( \theta_{j, r_{ij}} - \boldsymbol \beta_j^\top \boldsymbol x_i\right)-\Phi\left( \theta_{j, r_{ij}-1} - \boldsymbol \beta_j^\top \boldsymbol x_i\right)\right)
@@ -115,7 +629,7 @@ $$
 \tilde{\bm x}^\text{lower}_{i,j}\right)}(\phi(\boldsymbol\psi_j^\top \tilde{\bm x}^\text{upper}_i)\tilde{\bm x}^\text{upper}_{i,j} - \phi(\boldsymbol\psi_j^\top \tilde{\bm x}^\text{lower}_{i,j})\tilde{\bm x}^\text{lower}_{i,j})
 $$
 
-### Gaussian responses
+#### Gaussian responses
 
 The negative log-likelihood is:
 $$
@@ -125,7 +639,7 @@ where $\boldsymbol x^*_i=(1, \boldsymbol x^\top_i)^\top$ and $\boldsymbol\beta^*
 
 
 The relevant derivatives are:
-
+%
 $$
 \frac{\partial\textrm{neglog}\mathcal L^j_{i}}{\boldsymbol \beta^*_{j}}=-\boldsymbol x^*_i\frac{(y_i - \boldsymbol \beta_{j}^{*\top}\boldsymbol x^*_i)}{\sigma_j^2}
 $$
@@ -136,9 +650,9 @@ $$
 (y_i - \boldsymbol\beta_{j}^{*\top} \boldsymbol x^*_i)^2\cdot \sigma_j^{-3}
 $$
 
-## Bivariate case
+### Bivariate case
 
-### Case 1: 2 ordinal variables
+#### Case 1: two ordinal variables
 
 See derivations for **mvord**. In principle we have:
 
@@ -168,23 +682,20 @@ $$
 
 The relevant derivatives are:
 \begin{align*}
-\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\boldsymbol \psi_k}&=
-%-\frac{1}{p_i^{k,l}}\left(\frac{\partial\Phi_2(U_{i,k},U_{i,l},\rho)}{\partial U_{i,k}}\cdot \tilde %x^\text{upper}_{i,k} - \frac{\partial\Phi_2(U_{i,k},L_{i,l},\rho)}{\partial U_{i,k}}\cdot \tilde %x^\text{upper}_{i,k} - \frac{\partial\Phi_2(U_{i,l},L_{i,k},\rho)}{\partial L_{i,k}}\cdot \tilde %x^\text{lower}_{i,k} + \frac{\partial\Phi_2(L_{i,l},L_{i,k},\rho)}{\partial L_{i,k}}\cdot \tilde %x^\text{lower}_{i,k}\right)\\&
--\frac{1}{p_i^{k,l}}\left(\left(\frac{\partial\Phi_2(U_{i,k},U_{i,l},\rho)}{\partial U_{i,k}} - \frac{\partial\Phi_2(U_{i,k},L_{i,l},\rho)}{\partial U_{i,k}}\right)\cdot \tilde x^\text{upper}_{i,k} -  \left(\frac{\partial\Phi_2(U_{i,l},L_{i,k},\rho)}{\partial L_{i,k}} - \frac{\partial\Phi_2(L_{i,l},L_{i,k},\rho)}{\partial L_{i,k}}\right)\cdot \tilde x^\text{lower}_{i,k}\right)\\
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\boldsymbol \psi_k}=
+  -\frac{1}{p_i^{k,l}}&\left(\left(\frac{\partial\Phi_2(U_{i,k},U_{i,l},\rho)}{\partial U_{i,k}} - \frac{\partial\Phi_2(U_{i,k},L_{i,l},\rho)}{\partial U_{i,k}}\right)\cdot \tilde x^\text{upper}_{i,k} - \right.\\ &\left.\left(\frac{\partial\Phi_2(U_{i,l},L_{i,k},\rho)}{\partial L_{i,k}} - \frac{\partial\Phi_2(L_{i,l},L_{i,k},\rho)}{\partial L_{i,k}}\right)\cdot \tilde x^\text{lower}_{i,k}\right)\\
 \end{align*}
-
-
+%
 \begin{align*}
-\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\boldsymbol \psi_l}&
-%=-\frac{1}{p_i^{k,l}}\left(\frac{\partial\Phi_2(U_{i,k},U_{i,l},\rho)}{\partial U_{i,l}}\cdot \tilde %x^\text{upper}_{i,l} - \frac{\partial\Phi_2(U_{i,k},L_{i,l},\rho)}{\partial L_{i,l}}\cdot \tilde %x^\text{lower}_{i,l} - \frac{\partial\Phi_2(U_{i,l},L_{i,k},\rho)}{\partial U_{i,l}}\cdot \tilde %x^\text{upper}_{i,l} + \frac{\partial\Phi_2(L_{i,l},L_{i,k},\rho)}{\partial L_{i,l}}\cdot \tilde %x^\text{lower}_{i,l}\right)\\&
-=-\frac{1}{p_i^{k,l}}\left(\left(\frac{\partial\Phi_2(U_{i,k},U_{i,l},\rho)}{\partial U_{i,l}} - \frac{\partial\Phi_2(U_{i,l},L_{i,k},\rho)}{\partial U_{i,l}}\right)\cdot \tilde x^\text{upper}_{i,l} -  \left(\frac{\partial\Phi_2(U_{i,k},L_{i,l},\rho)}{\partial L_{i,l}}\right) - \frac{\partial\Phi_2(L_{i,l},L_{i,k},\rho)}{\partial L_{i,l}}\cdot \tilde x^\text{lower}_{i,l}\right)\\
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\boldsymbol \psi_l}
+  =-\frac{1}{p_i^{k,l}}&\left(\left(\frac{\partial\Phi_2(U_{i,k},U_{i,l},\rho)}{\partial U_{i,l}} - \frac{\partial\Phi_2(U_{i,l},L_{i,k},\rho)}{\partial U_{i,l}}\right)\cdot \tilde x^\text{upper}_{i,l} - \right.\\ &\left.\left(\frac{\partial\Phi_2(U_{i,k},L_{i,l},\rho)}{\partial L_{i,l}} - \frac{\partial\Phi_2(L_{i,l},L_{i,k},\rho)}{\partial L_{i,l}}\right)\cdot \tilde x^\text{lower}_{i,l}\right)\\
 \end{align*}
 
 \begin{align*}
 \frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{ \rho}&=-\frac{1}{p_i^{k,l}}\left(\frac{\partial\Phi_2(U_{i,k},U_{i,l},\rho)}{\partial \rho} - \frac{\partial\Phi_2(U_{i,k},L_{i,l},\rho)}{\partial \rho} - \frac{\partial\Phi_2(U_{i,l},L_{i,k},\rho)}{\partial \rho} + \frac{\partial\Phi_2(L_{i,l},L_{i,k},\rho)}{\partial \rho}\right)
 \end{align*}
 
-### Case 2: Bivariate Gaussian 
+#### Case 2: Bivariate Gaussian 
 
 The bivariate negative log likelihood in this case is:
 
@@ -221,43 +732,44 @@ The bivariate negative log likelihood in this case is:
 <!-- $\partial\Sigma/\partial\sigma_k$, $\partial\Sigma/\partial\sigma_l$ (can be done easily by hand if time is no constraint). -->
 
 $$
-\textrm{neglog}\mathcal L^{k,l}_{i} = \log\left(2\pi\sigma_k\sigma_l\sqrt{1-\rho^2} \right) + \frac{1}{2\sqrt{1-\rho^2}}\underbrace{\left[\frac{(y_{i,k}-\bm\beta^*_k x^*_i)^2}{\sigma_k^2}-
-2\rho\frac{(y_{i,k}-\bm\beta^*_k x^*_i)(y_{i,l}-\bm\beta^*_l x^*_i)}{\sigma_k\sigma_l} + 
-\frac{(y_{i,l}-\bm\beta^*_l x^*_i)^2}{\sigma_l^2}
+\textrm{neglog}\mathcal L^{k,l}_{i} = \log\left(2\pi\sigma_k\sigma_l\sqrt{1-\rho^2} \right) + \frac{1}{2(1-\rho^2)}\underbrace{\left[\frac{(y_{i,k}-\bm\beta^*_k \bm x^*_i)^2}{\sigma_k^2}-
+2\rho\frac{(y_{i,k}-\bm\beta^*_k  \bm x^*_i)(y_{i,l}-\bm\beta^*_l  \bm x^*_i)}{\sigma_k\sigma_l} + 
+\frac{(y_{i,l}-\bm\beta^*_l  \bm x^*_i)^2}{\sigma_l^2}
 \right]}_{A}
 $$
 The relevant derivatives are:
 \begin{align*}
 \frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \bm\beta^*_{k}}& =  
-\frac{1}{2\sqrt{1-\rho^2}}\left[\frac{2(y_{i,k}-\bm\beta^*_k \bm x^*_i)}{\sigma_k^2}(-\bm x^*_i)-
+\frac{1}{2(1-\rho^2)}\left[\frac{2(y_{i,k}-\bm\beta^*_k \bm x^*_i)}{\sigma_k^2}(-\bm x^*_i)-
 2\rho\frac{(y_{i,l}-\bm\beta^*_l \bm x^*_i)}{\sigma_k\sigma_l}(-\bm x^*_i) \right]\\
-&=\frac{1}{\sqrt{1-\rho^2}}(-\bm x^*_i)\left[\frac{(y_{i,k}-\bm\beta^*_k \bm x^*_i)}{\sigma_k^2}-
+&=\frac{1}{(1-\rho^2)}(-\bm x^*_i)\left[\frac{(y_{i,k}-\bm\beta^*_k \bm x^*_i)}{\sigma_k^2}-
 \rho\frac{(y_{i,l}-\bm\beta^*_l\bm x^*_i)}{\sigma_k\sigma_l} \right]\\
+%%
 \frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \bm\beta^*_{l}}& =  
-\frac{1}{2\sqrt{1-\rho^2}}\left[\frac{2(y_{i,l}-\bm\beta^*_l\bm  x^*_i)}{\sigma_l^2}(-\bm x^*_i)-
+\frac{1}{2(1-\rho^2)}\left[\frac{2(y_{i,l}-\bm\beta^*_l\bm  x^*_i)}{\sigma_l^2}(-\bm x^*_i)-
 2\rho\frac{(y_{i,k}-\bm\beta^*_k \bm x^*_i)}{\sigma_k\sigma_l}(-\bm x^*_i) \right]\\
-&=\frac{1}{\sqrt{1-\rho^2}}(-\bm x^*_i)\left[\frac{(y_{i,l}-\bm\beta^*_l x^*_i)}{\sigma_l^2}-
-\rho\frac{(y_{i,k}-\bm\beta^*_k)}{\sigma_k\sigma_l} \right]\\
+&=\frac{1}{1-\rho^2}(-\bm x^*_i)\left[\frac{(y_{i,l}-\bm\beta^*_l x^*_i)}{\sigma_l^2}-
+\rho\frac{(y_{i,k}-\bm\beta^*_k x^*_i)}{\sigma_k\sigma_l} \right]\\
 %%
 \frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \sigma_{k}}& =  \frac{1}{\sigma_k} + 
-\frac{1}{2\sqrt{1-\rho^2}}\left[(y_{i,k}-\bm\beta^*_k x^*_i)^2(-2)\sigma_k^{-3}-
+\frac{1}{2(1-\rho^2)}\left[(y_{i,k}-\bm\beta^*_k x^*_i)^2(-2)\sigma_k^{-3}-
 2\rho\frac{(y_{i,k}-\bm\beta^*_k \bm x^*_i)(y_{i,l}-\bm\beta^*_l \bm x^*_i)}{\sigma_l}(-\sigma^{-2}_k) \right]\\
 &=\frac{1}{\sigma_k} + 
-\frac{1}{\sqrt{1-\rho^2}}\left[-\frac{y_{i,k}-\bm\beta^*_k\bm  x^*_i)^2}{\sigma_k^{3}}+
+\frac{1}{1-\rho^2}\left[-\frac{(y_{i,k}-\bm\beta^*_k\bm  x^*_i)^2}{\sigma_k^{3}}+
 \rho\frac{(y_{i,k}-\bm\beta^*_k \bm x^*_i)(y_{i,l}-\bm\beta^*_l \bm x^*_i)}{\sigma_l\sigma^{2}_k} \right]\\
 %%
 \frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \sigma_{l}}& =  \frac{1}{\sigma_l} + 
-\frac{1}{2\sqrt{1-\rho^2}}\left[(y_{i,l}-\bm\beta^*_l\bm  x^*_i)^2(-2)\sigma_l^{-3}-
+\frac{1}{2(1-\rho^2)}\left[(y_{i,l}-\bm\beta^*_l\bm  x^*_i)^2(-2)\sigma_l^{-3}-
 2\rho\frac{(y_{i,k}-\bm\beta^*_k \bm x^*_i)(y_{i,l}-\bm\beta^*_l \bm x^*_i)}{\sigma_k}(-\sigma^{-2}_l) \right]\\
 &=\frac{1}{\sigma_l} + 
-\frac{1}{\sqrt{1-\rho^2}}\left[-\frac{y_{i,l}-\bm\beta^*_l x^*_i)^2}{\sigma_l^{3}}+
+\frac{1}{1-\rho^2}\left[-\frac{(y_{i,l}-\bm\beta^*_l x^*_i)^2}{\sigma_l^{3}}+
 \rho\frac{(y_{i,k}-\bm\beta^*_k \bm x^*_i)(y_{i,l}-\bm\beta^*_l \bm x^*_i)}{\sigma_k\sigma^{2}_l} \right]\\
 %%
-\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \rho}& =  -\frac{\rho}{\sqrt{1-\rho^2}} +\frac{\rho}{2(1-\rho^2)^{3/2}} A - \frac{1}{\sqrt{1-\rho^2}}
+\frac{\partial\textrm{neglog}\mathcal L^{k,l}_{i}}{\partial \rho}& =  -\frac{\rho}{1-\rho^2} +\frac{\rho}{(1-\rho^2)^{2}} A - \frac{1}{1-\rho^2}
 \frac{(y_{i,k}-\bm\beta^*_k \bm x^*_i)(y_{i,l}-\bm\beta^*_l \bm x^*_i)}{\sigma_k\sigma_l}\\
 \end{align*}
 
-### Case 3: Mixture of Gaussian and ordinal
+#### Case 3: Mixture of Gaussian and ordinal responses
 
 If we have 1 normal variable at position $l$ and one ordinal variable at position $k$ we have:
 $$

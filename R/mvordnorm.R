@@ -31,13 +31,15 @@ NULL
 
 #############################################################################################
 #' @title Fitting a multivariate model of mixed normal and ordinal responses
-#' @description mvordnorm is used to fit a multivariate model of mixed normal and ordinal random variables. Probit link is used for the ordinal responses.
+#' @description mvordnorm is used to fit a multivariate model of mixed normal
+#' and ordinal random variables. Probit link is used for the ordinal responses.
 #' @param formula A formula as \link[Formula]{Formula}
 #' @param data data frame
-#' @param response_types a (named) vector of characters with length equal to the number of responses. Each element of the vector is
+#' @param response_types a (named) vector of characters with length equal to
+#' the number of responses. Each element of the vector is
 #'  either "gaussian" or "ordinal".
 #' @param na.action a function which indicates what should happen when the data contain NAs.
-# #' @param offset a list of length equal to the number of responses. This can be used to specify an a priori known component to be included in the linear predictor for each response
+# #' @param offset a list of length equal to the number of responses. This can  be used to specify an a priori known component to be included in the linear predictor for each response
 # #'  during fitting. Each element of the list must be of length equal to
 #' @param contrasts an optional list. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
 #' @param control  list of parameters for controlling the fitting process. See \code{\link{mvordnorm.control}} for details.
@@ -64,7 +66,7 @@ mvordnorm <- function(formula, data,
   call <- match.call()
   if(missing(data)) data <- environment(formula)
   mf <- match.call(expand.dots = FALSE)
-  m <- match(c("formula", "data", "subset", "na.action"), names(mf), 0L)
+  m <-  match(c("formula", "data", "subset", "na.action"), names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
 
@@ -112,7 +114,7 @@ mvordnorm <- function(formula, data,
   #   offset <- c(sapply(offset_arg, function(x) if (length(X) == 0) rep.int(0, NROW(Y)) else x))
   # }
 
-  ## weights
+  ## TODO weights
   # weights <- model.weights(mf)
   # if(is.null(weights)) weights <- 1
   # if(length(weights) == 1) weights <- rep.int(weights, NROW(y))
@@ -208,7 +210,7 @@ summary.mvordnorm <- function(object, call = FALSE, ...)
    colnames(cf) <- c("Estimate", "Std. Error", "z value", "Pr(>|z|)")
    summary.output <- list()
    summary.output$formula <- object$formula
-#   ## ------------------------
+   ## ------------------------
    cat("Formula: ")
    print(summary.output$formula, ...)
    cat("\n")
@@ -239,13 +241,12 @@ summary.mvordnorm <- function(object, call = FALSE, ...)
    cfs <-  cf[length(pars[[1]]) + length(pars[[2]]) +length(pars[[3]]) +
                 seq_along(pars[[4]]), ,drop = FALSE]
    summary.output$sigmas <- printCoefmat(cfs, signif.legend = FALSE)
-
-#   ## ------------------------------
+   ## ------------------------------
    cat("\nCorrelation params:\n")
    cfr <-  cf[length(pars[[1]]) + length(pars[[2]]) +length(pars[[3]]) +length(pars[[4]]) +
                 seq_along(pars[[5]]), ,drop = FALSE]
    summary.output$corrpars <- printCoefmat(cfr, signif.legend = FALSE)
-#   ## ------------------------------
+   ## ------------------------------
 
    class(summary.output) <- "summary.mvordnorm"
    return(invisible(summary.output))
