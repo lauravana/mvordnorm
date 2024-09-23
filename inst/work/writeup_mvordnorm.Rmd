@@ -773,13 +773,11 @@ The relevant derivatives are:
 
 If we have 1 normal variable at position $l$ and one ordinal variable at position $k$ we have:
 $$
-\textrm{neglog}\mathcal L^{k,l}_{i} = \log\left(\Phi(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}) - \Phi(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c})\right) + 0.5\log(2\pi)+\log(\sigma_l) + \frac{(y_{il} - \beta_{l}^{*\top} \bm x^*_i)^2}{2\sigma_l^2}
+\textrm{neglog}\mathcal L^{k,l}_{i} = \log\left(\Phi(\eta^u_c) - \Phi(\eta^l_c)\right) + 0.5\log(2\pi)+\log(\sigma_l) + \frac{(y_{il} - \beta_{l}^{*\top} \bm x^*_i)^2}{2\sigma_l^2}
 $$
-
-
-Let $\eta^u_c=\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}$ and 
+where $\eta^u_c=\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}$ and 
  $\eta^l_c=\frac{\theta_{k, r_{ik}-1} - \mu_c}{\sigma_c}$.
-Let $\tilde p_{i}^{k,l} = \Phi(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}) - \Phi(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c})$.
+Let $\tilde p_{i}^{k,l} =\Phi(\eta^u_c) - \Phi(\eta^l_c)$.
 
 The relevant derivatives are:
 

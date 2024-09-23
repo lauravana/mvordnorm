@@ -286,12 +286,13 @@ print.summary.mvordnorm <- function(summary.output, ...){
 #' @param se logical, indicating whether standard errors should be calculated.
 #' @param solver name of solver to be used by optimx.
 #' @export
-mvordnorm.control <- function(se = TRUE, solver = "CG") {
+mvordnorm.control <- function(se = TRUE, solver = "CG", usegrfun = TRUE) {
 #   if (is.null(solver.nlminb.control$eval.max)) solver.nlminb.control$eval.max <- 10000
 #   if (is.null(solver.nlminb.control$iter.max)) solver.nlminb.control$iter.max <- 5000
 #   if (is.null(solver.nlminb.control$trace)) solver.nlminb.control$trace <- 0
   list(se = se,
-       solver = solver)
+       solver = solver,
+       usegrfun = usegrfun)
 
 }
 #' @title vcov of Multivariate Models with Ordinal and Gaussian Responses.
