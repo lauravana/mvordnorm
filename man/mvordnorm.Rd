@@ -19,8 +19,9 @@ mvordnorm(
 
 \item{data}{data frame}
 
-\item{response_types}{a (named) vector of characters with length equal to the number of responses. Each element of the vector is
-either "gaussian" or "ordinal".}
+\item{response_types}{a (named) vector of characters with length equal to
+the number of responses. Each element of the vector is
+ either "gaussian" or "ordinal".}
 
 \item{na.action}{a function which indicates what should happen when the data contain NAs.}
 
@@ -34,7 +35,8 @@ either "gaussian" or "ordinal".}
 an object of class mvordnorm
 }
 \description{
-mvordnorm is used to fit a multivariate model of mixed normal and ordinal random variables. Probit link is used for the ordinal responses.
+mvordnorm is used to fit a multivariate model of mixed normal
+and ordinal random variables. Probit link is used for the ordinal responses.
 }
 \examples{
 

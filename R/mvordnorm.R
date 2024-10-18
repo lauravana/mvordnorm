@@ -253,7 +253,7 @@ summary.mvordnorm <- function(object, call = FALSE, ...)
 
 }
 
-
+#' @export
 print.summary.mvordnorm <- function(summary.output, ...){
    cat("Formula: ")
    print(summary.output$formula, ...)
@@ -286,7 +286,7 @@ print.summary.mvordnorm <- function(summary.output, ...){
 #' @param se logical, indicating whether standard errors should be calculated.
 #' @param solver name of solver to be used by optimx.
 #' @export
-mvordnorm.control <- function(se = TRUE, solver = "CG", usegrfun = TRUE) {
+mvordnorm.control <- function(se = TRUE, solver = "CG", usegrfun = FALSE) {
 #   if (is.null(solver.nlminb.control$eval.max)) solver.nlminb.control$eval.max <- 10000
 #   if (is.null(solver.nlminb.control$iter.max)) solver.nlminb.control$iter.max <- 5000
 #   if (is.null(solver.nlminb.control$trace)) solver.nlminb.control$trace <- 0
@@ -316,4 +316,19 @@ vcov.mvordnorm <- function(object, ...) object$H.inv %*% object$V %*% object$H.i
 logLik.mvordnorm <- function(object, ...) {
   structure(-object$objective,
             df = sum(diag(object$V %*% object$H.inv)), class = "logLik")
+}
+
+
+#' @title Coefficients of Multivariate Models with Ordinal and Gaussian Responses
+#' @description
+#' \code{coef} is a generic function which extracts the coefficients from objects of class \cr
+#' \code{'mvordnorm'}.
+#' @param object an object of class \code{'mvordnorm'}.
+#' @param ... further arguments passed to or from other methods.
+#' @method coef mvordnorm
+#' @export
+coef.mvordnorm <- function(object, ...) {
+  pars <- object$parameters
+  cf <- unlist(object$parameters[1:3])
+  cf
 }

@@ -4,7 +4,7 @@
 \alias{mvordnorm.control}
 \title{Control function for mvordnorm()}
 \usage{
-mvordnorm.control(se = TRUE, solver = "CG")
+mvordnorm.control(se = TRUE, solver = "CG", usegrfun = TRUE)
 }
 \arguments{
 \item{se}{logical, indicating whether standard errors should be calculated.}
