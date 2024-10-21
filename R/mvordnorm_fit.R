@@ -20,6 +20,9 @@ mvordnorm_fit <- function(y, X, # w,  offset,
 
 
   ## Missings in y
+  if (any(is.na(y)) & control$type_composite_log_lik == "type_2") {
+    stop("No implementation for type_2 composite likelihood with NAs!")
+  }
   ind_univ <- which(!is.na(y) & rowSums(!is.na(y)) == 1, arr.ind = TRUE)
   n_univ <- NROW(ind_univ)
   ## index for subjects containing pair c(k,l)
@@ -35,8 +38,16 @@ mvordnorm_fit <- function(y, X, # w,  offset,
          "ind_i" =  ind_i[[h]],
          "rpos" = h)
   })
+  if (control$type_composite_log_lik == "type_2") {
+    combis_fast_o <- combis_fast <- combis_fast[
+      drop(apply(combn(which(response_types == "ordinal"), 2), 2,
+                 function(co) {
+                   sapply(combis_fast, function(x) all(x$combis == co))
+                 }))]
+  }
+
   ## Optimize negative log likelihood ----
-  if (control$usegrfun) {
+  if (control$usegrfun  && control$type_composite_log_lik == "type_1") {
     grfun <- function(par)
       grad_neg_log_lik_joint(par, response_types,
                              y, X,  Xn, ntheta, p, ndimo, ndimn, ndim,
@@ -44,6 +55,11 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   } else {
     grfun <- NULL
   }
+  neg_log_lik_joint <- switch(control$type_composite_log_lik,
+                              "type_1" = neg_log_lik_joint_type_1,
+                              "type_2" = neg_log_lik_joint_type_2,
+                              stop("Provided type of composite likelihood not supported.")
+  )
   obj$res <- optimx(start_values, function(par)
     neg_log_lik_joint(par, response_types,
                       y, X, ntheta, p, ndimo, ndimn, ndim,
@@ -105,10 +121,22 @@ mvordnorm_fit <- function(y, X, # w,  offset,
 
   ## Standard errors ----
   if (control$se) {
+    if (control$type_composite_log_lik == "type_1") {
+      gradients_row_pairs_orig <-
+        rowwise_pairwise_grad_neg_log_lik_joint(obj$parOpt, response_types,
+                                                y, X,  Xn, ntheta, p, ndimo,
+                                                ndimn, ndim,
+                                                idn, ido, ind_univ,
+                                                combis_fast)
+    } else {
+      gradients_row_pairs_orig <- numDeriv::grad(
+        function(par) rowwise_neg_log_lik_joint(par, response_types,
+                                                y, X,  Xn, ntheta, p, ndimo,
+                                                ndimn, ndim,
+                                                idn, ido, ind_univ,
+                                                combis_fast), x = obj$parOpt)
+    }
     ## Gradients of original parameters to enter optimizer
-    gradients_row_pairs_orig <- rowwise_pairwise_grad_neg_log_lik_joint(obj$parOpt, response_types,
-                                                                        y, X,  Xn, ntheta, p, ndimo, ndimn, ndim,
-                                                                        idn, ido, ind_univ, combis_fast)
     ## Correct for transformations in theta, sd and r:
     jthetas <-
       jac_dttheta_dtheta_flexible(thetas,
@@ -143,17 +171,14 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     obj$claic <- 2 * obj$res[["value"]] + 2 * sum(diag(V %*% H.inv))
     obj$clbic <- 2 * obj$res[["value"]] + log(n) * sum(diag(V %*% H.inv))
   }
-
-
-
   obj
 }
 
-neg_log_lik_joint <- function(pars, response_types, y, X,
-                              ntheta, p, ndimo, ndimn, ndim,
-                              idn, ido,
-                              ind_univ,
-                              combis_fast) {
+neg_log_lik_joint_type_1 <- function(pars, response_types, y, X,
+                                     ntheta, p, ndimo, ndimn, ndim,
+                                     idn, ido,
+                                     ind_univ,
+                                     combis_fast) {
 
   ## thresholds
   thetas <- lapply(1:sum(response_types == "ordinal"), function(j) {
@@ -266,3 +291,120 @@ neg_log_lik_joint <- function(pars, response_types, y, X,
   ## Final neg log lik
   - sum(log_pl_vec_h) - sum(univ_nll)
 }
+
+
+neg_log_lik_joint_type_2 <- function(pars, response_types, y, X,
+                              ntheta, p, ndimo, ndimn, ndim,
+                              idn, ido,
+                              ind_univ,
+                              combis_fast) {
+  ## ASSUME NO MISSINGS!!
+  ## thresholds
+  thetas <- lapply(1:sum(response_types == "ordinal"), function(j) {
+    transf_thresholds_flexible(pars[cumsum(c(0, ntheta))[j] + seq_len(ntheta[j])])
+  })
+  ## regression coefs: intercepts for normals
+  beta0n <- pars[sum(ntheta) + seq_len(ndimn)] # we need intercepts for the normal variables
+  ## common regression coefs
+  beta <- pars[sum(ntheta) + ndimn + seq_len(ndim * p)]
+  ## sd parameters for normals
+  sigman <- exp(pars[sum(ntheta) + ndimn + ndim * p + seq_len(ndimn)])
+  ## correlations error structure
+  tparerror <- pars[(sum(ntheta) + ndimn + ndim * p + ndimn + seq_len(ndim * (ndim - 1)/2))]
+  rvec <- transf_sigma(tparerror, ndim)
+  smat <- diag(ndim)
+  smat[lower.tri(smat)] <- rvec
+  R <- smat + t(smat) - diag(ndim)
+
+  beta_mat <- beta
+  dim(beta_mat) <- c(ndim, p)
+  #print(beta_mat)
+  Xbeta <- tcrossprod(X, beta_mat)
+
+  eta_u_o <- sapply(1:ndimo, function(j)
+    c(thetas[[j]], 1e06)[y[, ido[j]]] - Xbeta[, ido[j]])
+
+  eta_l_o <- sapply(1:ndimo, function(j)
+    drop(c(-1e06, thetas[[j]])[y[, ido[j]]] - Xbeta[, ido[j]]))
+
+  eta_n <- sapply(1:ndimn, function(j) {
+    beta0n[j] + Xbeta[, idn[j]]
+  })
+
+  if (is.null(dim(eta_l_o))) {
+    dim(eta_l_o) <- dim(eta_u_o) <- c(1, ndimo)
+    dim(eta_n) <- c(1, ndimn)
+  }
+
+  ## CASE 1: all normals
+  ## TODO!! MISSINGS + EFFICIENCY
+  Rn <- R[idn,idn]
+  eps <- y[, idn] - eta_n
+  S <- tcrossprod(sigman) * Rn
+  chS <- t(chol(S))
+  C <- mvtnorm::ltMatrices(chS[lower.tri(chS, diag = TRUE)], diag = TRUE)
+  log_pl_n <-  sum(mvtnorm::ldmvnorm(t(eps), logLik = TRUE, chol = C))
+  ## CASE 2: pairwise ordinals
+  # combis_fast_o <- combis_fast[
+  #   drop(apply(combn(which(response_types == "ordinal"), 2), 2,
+  #              function(co)
+  #                sapply(combis_fast, function(x) all(x$combis == co))
+  #                }))]
+  log_pl_o <- sapply(combis_fast, function(x) {
+    k <- x$combis[1]
+    l <- x$combis[2]
+    r <- rvec[x$rpos]
+    id <- x$ind_i
+    kido <- which(ido == k)
+    lido <- which(ido == l)
+    prs <- rectbiv_norm_prob(U = eta_u_o[id, c(kido, lido), drop = FALSE],
+                             L = eta_l_o[id, c(kido, lido), drop = FALSE],
+                             r)
+
+    prs[prs < .Machine$double.eps] <- .Machine$double.eps
+
+    sum(log(prs))
+  })
+  ## CASE 3: each ordinal conditional on all normals
+  eps <- y[, idn] - eta_n
+  eps <- sweep(eps, 2, sigman, "/")
+  Rninv <- chol2inv(chol(Rn))
+  log_pl_cond <- sapply(ido, function(j) {
+    rho <- R[j, c(idn)]
+    eta_cond <- Xbeta[, j] + tcrossprod(as.matrix(eps), rho %*% Rninv)
+    sd_cond  <- drop(sqrt(1 - rho %*% Rninv %*% rho))
+    eta_u_cond <- (c(thetas[[j]],  1e06)[y[, j]] - eta_cond)/sd_cond
+    eta_l_cond <- (c(-1e06, thetas[[j]])[y[, j]] - eta_cond)/sd_cond
+    p_cond <- pnorm(eta_u_cond) - pnorm(eta_l_cond)
+    p_cond[p_cond < .Machine$double.eps] <- .Machine$double.eps
+    sum(log(p_cond))
+  })
+#
+#   # These are the observations which have only one response (aka univariate)
+#   colu <- ind_univ[, 2] # col of univariate
+#   rowu <- ind_univ[, 1] # row of univariate
+#   idn_univ <- cbind(rowu, match(colu, idn))
+#   ido_univ <- cbind(rowu,  match(colu, ido))
+#   ndens <- dnorm(y[cbind(rowu, colu)],
+#                  eta_n[idn_univ],
+#                  sigman[match(colu, idn)], log =TRUE)
+#   lndens <-  ifelse(is.na(ndens), 0, ndens)
+#   odens  <- log(pnorm(eta_u_o[ido_univ]) - pnorm(eta_l_o[ido_univ]))
+#   lodens <-  ifelse(is.na(odens), 0, odens)
+#   univ_nll <- lndens + lodens
+  ## Final neg log lik
+  - log_pl_n - sum(log_pl_o) - sum(log_pl_cond)#- sum(univ_nll)
+}
+#
+# neg_log_lik_joint_type_2 <- function(pars, response_types, y, X,
+#                                               ntheta, p, ndimo, ndimn, ndim,
+#                                               idn, ido,
+#                                               ind_univ,
+#                                               combis_fast) {
+#   colSums(Reduce("+", rowwise_pairwise_grad_neg_log_lik_joint(pars, response_types, y, X, Xn,
+#                                                               ntheta, p, ndimo, ndimn, ndim,
+#                                                               idn, ido,
+#                                                               ind_univ,
+#                                                               combis_fast)))
+#
+# }
