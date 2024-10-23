@@ -4,12 +4,21 @@
 \alias{mvordnorm.control}
 \title{Control function for mvordnorm()}
 \usage{
-mvordnorm.control(se = TRUE, solver = "CG", usegrfun = TRUE)
+mvordnorm.control(
+  se = TRUE,
+  solver = "CG",
+  usegrfun = FALSE,
+  type_composite_log_lik = c("type_1", "type_2")
+)
 }
 \arguments{
 \item{se}{logical, indicating whether standard errors should be calculated.}
 
 \item{solver}{name of solver to be used by optimx.}
+
+\item{usegrfun}{logical indicating whether the gradient should be used in optimx.}
+
+\item{type_composite_log_lik}{type of composite likelihood approach. "type_1" corresponds to pairwise likelihood."type_2" considers the full likelihood of the normals, pairwise likelihoods of the ordinal variables and the likelihood of each ordinal conditional on all normal variables. Note that for type 2 numeric standard error are computed with numDeriv.}
 }
 \description{
 Control arguments are set.

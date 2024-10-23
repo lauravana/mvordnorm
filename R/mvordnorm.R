@@ -25,7 +25,7 @@ NULL
 #' @importFrom Matrix bdiag nearPD
 #' @importFrom optimx optimx
 #' @importFrom Formula Formula as.Formula
-#' @importFrom mvtnorm rmvnorm
+#' @importFrom mvtnorm rmvnorm ldmvnorm sldmvnorm ltMatrices
 
 
 
@@ -88,7 +88,6 @@ mvordnorm <- function(formula, data,
   ## evaluate model.frame
   mf[[1L]] <- as.name("model.frame")
   mf <- eval(mf, parent.frame())
-
   ## extract terms, model matrix, model response
   mt <- attr(mf, "terms")
   # mtX <- terms(formula, data = data, rhs = 1L)
