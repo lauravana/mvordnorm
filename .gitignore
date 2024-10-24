@@ -4,3 +4,6 @@
 .Ruserdata
 inst/work/writeup_mvordnorm.html
 inst/work/writeup_mvordnorm.pdf
+inst/.DS_Store
+inst/work/.DS_Store
+.DS_Store
