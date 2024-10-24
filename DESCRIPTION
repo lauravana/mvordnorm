@@ -1,7 +1,7 @@
 Package: mvordnorm
 Type: Package
 Title: Multivariate Models for Mixed Ordinal and Normal Responses in R
-Version: 0.0.1
+Version: 0.0.2
 Author: Laura Vana, Rainer Hirk 
 Maintainer: Laura Vana <laura.vana@tuwien.ac.at>
 Description: R package mvordnorm implements composite likelihood estimation in 
