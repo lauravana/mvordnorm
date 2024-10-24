@@ -72,7 +72,7 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   )
   if (control$usegrfun) {
     grfun <- function(par) grad_neg_log_lik_joint(par, response_types,
-                                                  y, X,  Xn, ntheta, p, ndimo, ndimn, ndim,
+                                                  y, X, ntheta, p, ndimo, ndimn, ndim,
                                                   idn, ido, ind_univ, combis_fast)
   } else {
     grfun <- NULL
@@ -156,7 +156,8 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     gradients_row_pairs_orig <-
       rowwise_pairwise_grad_neg_log_lik_joint(obj$parOpt,
                                               response_types,
-                                              y, X,  Xn, ntheta, p, ndimo,
+                                              y, X,
+                                              ntheta, p, ndimo,
                                               ndimn, ndim,
                                               idn, ido, ind_univ,
                                               combis_fast)

@@ -34,7 +34,7 @@ dphi2drho <- function(x, y, rho, sigma_x, sigma_y){
 }
 
 
-rowwise_pairwise_grad_neg_log_lik_joint_type_2 <- function(pars, response_types, y, X, Xn,
+rowwise_pairwise_grad_neg_log_lik_joint_type_2 <- function(pars, response_types, y, X,
                                                            ntheta, p, ndimo, ndimn, ndim,
                                                            idn, ido,
                                                            ind_univ,
@@ -349,7 +349,7 @@ rowwise_pairwise_grad_neg_log_lik_joint_type_2 <- function(pars, response_types,
 }
 
 
-rowwise_pairwise_grad_neg_log_lik_joint_type_1 <- function(pars, response_types, y, X, Xn,
+rowwise_pairwise_grad_neg_log_lik_joint_type_1 <- function(pars, response_types, y, X,
                                                            ntheta, p, ndimo, ndimn, ndim,
                                                            idn, ido,
                                                            ind_univ,
@@ -630,21 +630,21 @@ rowwise_pairwise_grad_neg_log_lik_joint_type_1 <- function(pars, response_types,
 }
 
 
-grad_neg_log_lik_joint_type_1 <- function(pars, response_types, y, X, Xn,
+grad_neg_log_lik_joint_type_1 <- function(pars, response_types, y, X,
                                           ntheta, p, ndimo, ndimn, ndim,
                                           idn, ido,
                                           ind_univ,
                                           combis_fast) {
-  colSums(Reduce("+", rowwise_pairwise_grad_neg_log_lik_joint_type_1(pars, response_types, y, X, Xn,
+  colSums(Reduce("+", rowwise_pairwise_grad_neg_log_lik_joint_type_1(pars, response_types, y, X,
                                                                      ntheta, p, ndimo, ndimn, ndim,
                                                                      idn, ido,
                                                                      ind_univ,
                                                                      combis_fast)))
 }
 grad_neg_log_lik_joint_type_2 <- function(pars, response_types,
-                                          y, X,  Xn, ntheta, p, ndimo, ndimn, ndim,
+                                          y, X, ntheta, p, ndimo, ndimn, ndim,
                                           idn, ido, ind_univ, combis_fast){
-  colSums(Reduce("+", rowwise_pairwise_grad_neg_log_lik_joint_type_2(pars, response_types, y, X, Xn,
+  colSums(Reduce("+", rowwise_pairwise_grad_neg_log_lik_joint_type_2(pars, response_types, y, X,
                                                                      ntheta, p, ndimo, ndimn, ndim,
                                                                      idn, ido,
                                                                      ind_univ,

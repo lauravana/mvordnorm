@@ -1,20 +1,20 @@
 ---
 title: "An R package for estimating a joint model of correlated ordinal and continuous variables"
 author: "Laura Vana and Rainer Hirk"
-output: pdf_document
-header-includes:
-  - \usepackage{bm}
-  - \usepackage{pdfpages}
-  - \usepackage{hyperref}
-  - \usepackage{xcolor}
-  - \usepackage{booktabs}
-  - \usepackage{multicol}
-  - \newcommand{\proglang}[1]{\textbf{\texttt{#1}}}
-  - \newcommand{\pkg}[1]{\textbf{#1}}
-  - \newcommand{\code}[1]{\texttt{#1}}
-  - \hypersetup{colorlinks=true, citecolor=blue, linkcolor=blue, urlcolor=magenta}
-bibliography: refs.bib
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: mvordnorm.bib
 ---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
 
 # Introduction
 
@@ -60,86 +60,56 @@ $$
 $$
 with mean zero and correlation matrix $R$. Note that the matrix is restricted to have diagonal elements equal to one due to identifiability restrictions for the ordinal variables.
 
-# Pairwise likelihood {#sect:pl}
+# Composite likelihood estimation {#sect:pl}
 
+## Pairwise likelihood
 Assume we collect all $q$ responses in a matrix $Y$ of dimension
 $(n\times q)$ and that there are no missing values in the response
 matrix.
-The pairwise log-likelihood is given by the sum of the bivariate likelihoods over all pairs of responses $k=1,\ldots,q$ and $l > k$:
+The pairwise log-likelihood is given by the sum of the bivariate
+likelihoods over all pairs of responses $k=1,\ldots,q$ and $l > k$:
 $$
 p\ell(\Theta; Y, X) =\sum_{i=1}^n \sum_{k<l} \ell(\Theta; y_{ik}, y_{il}).
 $$
 The bivariate log-likelihoods can be split into three cases, depending on the type of the responses $k$ and $l$: 
 
-* Case 1: both responses are ordinal
+* Case 1: both responses are ordinal, in which case the likelihood is a bivariate normal
+probability
 
-* Case 2: both responses are normal
+* Case 2: both responses are normal, in which case the likelihood is a density of 
+a bivariate normal distribution
 
-* Case 3: one response is ordinal, one normal
+* Case 3: one response is ordinal, one normal the likelihood is a normal probability
+which takes into account the conditional distribution of
+$\tilde y^o_{k}$ given $y^n_{l}$, which are jointly normal.
 
 
-For *Case 1*, the bivariate log-likelihood is given by the bivariate probability $\Pr(y_{ik}=r_{ik}, y_{il} = r_{il})$:
-$$
-\ell(\Theta; y_{ik}, y_{il})=\Pr(y_{ik}=r_{ik}, y_{il} = r_{il}) = 
-\int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} 
-\phi_2(\tilde y_{ik} -\bm \beta_k^\top \bm x_i, \tilde y_{il} - \bm\beta_k^\top \bm x_i; \rho_{kl}) d\tilde y_{ik}d\tilde y_{il},
-$$
-where $\rho_{kl}$ is the correlation coefficient between responses $k$ and $l$ and
-$\phi_2$ is
-the bivariate standard normal probability density function. 
-By denoting
-$U_{i,k} = \theta_{k, r_{ik}} -\bm \beta_k^\top \bm x_i$ ,
-$L_{i,k} = \theta_{k, r_{ik}-1} - \bm \beta_k^\top \bm x_i$,
-$U_{i,l} = \theta_{k, r_{il}} - \bm \beta_l^\top \bm x_i$,
-$L_{i,l} = \theta_{k, r_{ik}-1} - \bm \beta_l^\top \bm x_i$, 
-the bivariate probability is equal to:
-$$
-\Pr(y_{ik}=r_{ik}, y_{il} = r_{il})=\Phi_2\left(U_{i,k}, U_{i,l};  \rho_{kl} \right)-\Phi_2\left(L_{i,k}, U_{i,l};  \rho_{kl} \right)-\Phi_2\left(U_{i,k}, L_{i,l};  \rho_{kl} \right)
-+\Phi_2\left(L_{i,k}, L_{i,l};  \rho_{kl} \right)
-$$
-where $\Phi_2$ is the bivariate standard normal cumulative distribution function.
+## Three-part composite likelihood 
 
-For *Case 2*, where both responses are continuous, the bivariate log-likelihood is given by the bivariate standard normal density:
-$$
-\ell(\Theta; y_{ik}, y_{il}) = f(y_{ik}, y_{il}|\Theta)= \phi_2\left(\frac{y_{ik} - \beta_{0k} -\bm\beta_k^\top \bm x_i}{\sigma_k}, \frac{y_{il} - \beta_{0l} -\bm\beta_l^\top \bm x_i}{\sigma_l}; \rho_{kl}) \right)
-$$
+An alternative to the pairwise likelihood is to create a composite likelihood 
+consisting if 3 parts:
 
-Finally, for *Case 3*, where one response is ordinal and one response is continuous, the bivariate log-likelihood is given 
-by the product of a conditional probability and the  density
-of the continuous response. Assuming that the $k$-th response is ordinal and
-the $l$-th is continuous, we have:
-$$
-\ell(\Theta; y_{ik}, y_{il}) = \Pr(y_{ik}=r_{ik} | y^n_{il}) f(y_{il})
-$$
-where $f(y_{il})$ is the marginal standard normal pdf $\phi\left(\frac{y^n_{il} - \beta_{0l} -\bm\beta_l^\top \bm x_i}{\sigma_l} \right)$. 
-The conditional probability is given by :
-$$
-\Pr(y_{ik}=r_{ik} | y_{il}) = \Pr(\theta_{k, r_{ik}-1}\leq \tilde y_{ik}\leq \theta_{k, r_{ik}} | y_{il}).
-$$
-Using the fact that  $\tilde y_{ik}$ and $y_{il}$ are bivariate normals, we can easily derive the conditional distribution
-$$
-\tilde y_{ik} | y_{il} \sim N\left(\underbrace{\bm\beta_k^\top \bm x_i + \frac{\rho_{kl}}{\sigma_l}(y_{il} - \beta_{0l} -\bm\beta_l^\top \bm x_i)}_{\mu_c}, \underbrace{(1 - \rho_{kl}^2)}_{\sigma_c^2}\right)
-$$
-and the corresponding conditional probability:
-$$
-\Pr(y_{ik}=r_{ik} | y_{il})=
-\int_{\theta_{k, r_{ik}-1}}^{\theta_{k, r_{ik}}} \phi\left(\frac{\tilde y_{ik} - \mu_c}{\sigma_c}\right) d\tilde y_{ik} = 
-\Phi\left(\frac{\theta_{k, r_{ik}} - \mu_c}{\sigma_c}\right)-\Phi\left(\frac{\theta_{k, r_{ik}-1} - \mu_c}{\sigma_c}\right).
-$$
+* the pairwise likelihood of all ordinal responses,
 
+* the joint likelihood of all continuous responses,
+
+* the likelihood of each ordinal response conditional on all continuous responses.
+
+## Inference
 The standard errors of the parameters we computed using the Godambe information 
 matrix  and model comparison can be performed using modified version of Akaike and 
 Bayesian information criteria [for more details see @pub:mvord:Hirk+Hornik+Vana:2020]
 
-###### Missing values
+##  Missing values
 Note that the framework is easily extended to allow for the presence of 
 missing values in the responses. For each observation $i$, in the calculation
 of the pairwise log-likelihood, we consider all
 pairs of *observed responses*. In case for some observations only one response is 
 available, we consider the likelihood of the univariate observed response.
-For the continuous responses this is the standard normal pdf $\phi\left(\frac{y^n_{ik} - \beta_{0k} -\bm\beta_k^\top \bm x_i}{\sigma_l} \right)$ while for the ordinal 
+For the continuous responses this is the standard normal pdf 
+$\phi\left(\frac{y^n_{ik} - \beta_{0k} -\bm\beta_k^\top \bm x_i}{\sigma_l} \right)$ while for the ordinal 
 responses we have the univariate probability 
-$\Pr(y_{ik}=r_{ik})=\Phi(U_{i,k}) - \Phi(L_{i,k})$
+$\Pr(y_{ik}=r_{ik})=\Phi(U_{i,k}) - \Phi(L_{i,k})$.
 
 # Software implementation {#sect:soft}
 
@@ -164,8 +134,13 @@ The main arguments are:
 
 * `contrasts`: an optional list. See the `contrasts.arg` of `model.matrix.default`.
 
-* `control`: list of parameters for controlling the fitting process such as the 
-general purpose solver to be used or whether standard errors should be calculated.
+* `control`: list of parameters for controlling the fitting process such as:
+  
+  * the general purpose solver to be used (`solver = "CG"` by default),
+  * whether standard errors should be calculated (`se = "TRUE"(` by default),
+  * whether the gradient function should we used in the general purpose optimizer (`usegrfun = FALSE` by default),
+  * the type of composite likelihood approach to be employed (`type_composite_log_lik = c("type_1", "type_2")`; 
+  the pairwise (`"type_1"`) and three-part composite likelihood (`"type_2"`) are implemented.
 
 For illustration purposes in section we use a worked example based on a simulated data set consisting of
 1000 subjects for which two multiple ordinal responses
@@ -194,7 +169,8 @@ implementation should be improved in future versions of the package, to allow th
 user to specify outcome specific intercepts.
 
 The `summary` method produces an output which is similar to the one of most
-regression models, and contains information on the thresholds for ordinal responses and intercepts for the continuous response, on the outcome specific regression
+regression models, and contains information on the thresholds for ordinal 
+responses and intercepts for the continuous response, on the outcome specific regression
 coefficients, on the scale parameters for the continuous variables and the correlation
 matrix $R$.
 ```{r}
@@ -220,7 +196,7 @@ summary(fit_with_NAs)
 
 #### Acknowledgments
 This research was supported by funds of the Oesterreichischen Nationalbank
-(Austrian Central Bank, Anniversary Fund, project number: 18482 ``Multivariate ordinal regression models for enhanced credit risk  modeling'').
+(Austrian Central Bank, Anniversary Fund, project number: 18482 ``Multivariate ordinal regression models for enhanced credit risk  modeling").
 
 # References
 <div id="refs"></div>
