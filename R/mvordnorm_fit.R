@@ -12,7 +12,7 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   ntheta <- apply(y[,response_types == "ordinal", drop = FALSE], 2,
                   function(x) nlevels(as.factor(x)) - 1)   # number of thresholds
 
-  start_values <- make_start_values(y, X, family_type = response_types)
+  start_values <- make_start_values(y, X, response_types = response_types)
 
   # Missings in y ----
   if (control$type_composite_log_lik == "type_1") {
@@ -71,7 +71,6 @@ mvordnorm_fit <- function(y, X, # w,  offset,
                                    stop("Provided type of composite likelihood not supported.")
   )
   if (control$usegrfun) {
-
     grfun <- function(par) grad_neg_log_lik_joint(par, response_types,
                                                   y, X,  Xn, ntheta, p, ndimo, ndimn, ndim,
                                                   idn, ido, ind_univ, combis_fast)
@@ -88,11 +87,11 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     method = control$solver)
 
   # grfun(par = fit2$parOpt)
-  # numDeriv::grad(function(par) neg_log_lik_joint(par, response_types,
+  # dnum<-numDeriv::grad(function(par) neg_log_lik_joint(par, response_types,
   #                                               y, X, ntheta, p, ndimo, ndimn, ndim,
   #                                               idn, ido, ind_univ, combis_fast),
-  #                x = fit2$parOpt)
-
+  #                x = fit1$parOpt)
+  # cbind(grfun(par = fit1$parOpt), dnum)
   # microbenchmark::microbenchmark( obj$res <- optimx(start_values, function(par)
   #   neg_log_lik_joint(par, response_types,
   #                     y, X, ntheta, p, ndimo, ndimn, ndim,
@@ -113,9 +112,8 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   obj$parOpt <- unlist(obj$res[seq_along(start_values)])
   obj$combis_fast <- combis_fast
 
-  ## Finalize ----
+  # Finalize ----
   ynames <- names(y)
-
   tpar   <- unlist(obj$parOpt)
   tparTheta <- tpar[1:sum(ntheta)]
   thetas <- unlist(lapply(seq_len(ndimo), function(j) {
@@ -141,7 +139,8 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     apply(combn(ndim,2), 2,function(x)
       sprintf("corr_%s_%s", ynames[x[1]], ynames[x[2]]))
 
-
+  names_all <- c(names(thetas), names(beta0n), names(beta), names(sigman),
+                 names(rvec))
   obj$parameters <- list(thetas, beta0n, beta,  sigman, rvec)
 
 
@@ -193,6 +192,9 @@ mvordnorm_fit <- function(y, X, # w,  offset,
     }
     obj$H.inv <-  H.inv
     obj$V <- V
+    rownames(obj$V) <- colnames(obj$V) <-
+      rownames(obj$H.inv) <- colnames(obj$H.inv) <-
+      names_all
     obj$claic <- 2 * obj$res[["value"]] + 2 * sum(diag(V %*% H.inv))
     obj$clbic <- 2 * obj$res[["value"]] + log(n) * sum(diag(V %*% H.inv))
   }
@@ -255,6 +257,7 @@ neg_log_lik_joint_type_1 <- function(pars, response_types, y, X,
                                L = eta_l_o[id, c(kido, lido), drop = FALSE], r)
 
       prs[prs < .Machine$double.eps] <- .Machine$double.eps
+      prs[prs > 1] <- 1 - .Machine$double.eps
 
       log_pl_vec <- sum(log(prs))
     }

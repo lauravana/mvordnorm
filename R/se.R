@@ -34,10 +34,6 @@ dphi2drho <- function(x, y, rho, sigma_x, sigma_y){
 }
 
 
-# pars <- fit2$parOpt
-# y <- fit2$y
-# X <- fit2$X
-# response_types <- fit$response_types
 rowwise_pairwise_grad_neg_log_lik_joint_type_2 <- function(pars, response_types, y, X, Xn,
                                                            ntheta, p, ndimo, ndimn, ndim,
                                                            idn, ido,
@@ -157,6 +153,7 @@ rowwise_pairwise_grad_neg_log_lik_joint_type_2 <- function(pars, response_types,
                             L = cbind(Lk, Ll), rkl)
 
     pr[pr < .Machine$double.eps] <- .Machine$double.eps
+    pr[pr > 1] <- 1 - .Machine$double.eps
     ###############################
     ## dtheta and dbeta for pair kl
     ###############################
@@ -181,6 +178,7 @@ rowwise_pairwise_grad_neg_log_lik_joint_type_2 <- function(pars, response_types,
     id_theta_kl <- c(pos_theta_k, pos_theta_l)
 
     grad_theta <- gradmat[indkl,  id_theta_kl] %*% Jpsi[id_theta_kl, id_theta_kl]
+
     gradmat[indkl,  id_theta_kl] <- grad_theta
 
     ##################
@@ -345,14 +343,12 @@ rowwise_pairwise_grad_neg_log_lik_joint_type_2 <- function(pars, response_types,
       gradmat_cond[[jo]][is.na(gradmat_cond[[jo]])] <- 0
     }
   }
-  # cbind(colSums(Reduce("+", res)),dnum)
   res <- c(d_ana_univariate_o, d_ana_o,
            list(gradmat_n), gradmat_cond)
 
 }
 
 
-# pars<-fit2$parOpt
 rowwise_pairwise_grad_neg_log_lik_joint_type_1 <- function(pars, response_types, y, X, Xn,
                                                            ntheta, p, ndimo, ndimn, ndim,
                                                            idn, ido,
@@ -454,8 +450,7 @@ rowwise_pairwise_grad_neg_log_lik_joint_type_1 <- function(pars, response_types,
   }
 
   # iterate over pairs ----
-  d_ana <- lapply(seq_along(combis_fast), function(i) {
-    x <- combis_fast[[i]]
+  d_ana <- lapply(combis_fast, function(x) {
     comb <- x$combis
     ## for each pair make an indicator for each subject where the pair applies
     indkl <- x$ind_i

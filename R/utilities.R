@@ -36,20 +36,22 @@ rectbiv_norm_prob <- function(U, L, r) {
   return(pr)
 }
 
-make_start_values <- function(y, X, family_type) {
-  start_theta <- lapply(which(family_type == "ordinal"),
+make_start_values <- function(y, X, response_types) {
+  start_theta <- lapply(which(response_types == "ordinal"),
                         function(j) (ordinal::clm(factor(y[, j]) ~ 1)$alpha))
   ndim <- ncol(y)
   p <- ncol(X)
+  ido <- which(response_types == "ordinal")
   pars <- c(unlist(lapply(start_theta, function(x) c(x[1], log(diff(x))))),
             # beta0 for normals
-            colMeans(y[, family_type != "ordinal", drop = FALSE], na.rm = TRUE),
+            colMeans(y[, -ido, drop = FALSE], na.rm = TRUE),
             # betas
             rep(0, ndim * p),
             # sigmas for normals
-            rep(0, sum(family_type != "ordinal")),
+            rep(0, sum(response_types != "ordinal")),
             # correlation params
             rep(0, ndim * (ndim - 1)/2))
+
   return(pars)
 }
 
@@ -336,3 +338,6 @@ f <- function(pars) {
 # par2 <- c(pars[c( 5,  9, 13, 17,  6, 10, 14, 18)], exp(pars[19:20]), 0.8961249)
 # numDeriv::grad(function(p) neg_log_likelihood_multivariate(p, y[,3:4], Xn),
 #                x = par2)
+
+
+
