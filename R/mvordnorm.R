@@ -25,7 +25,7 @@ NULL
 #' @importFrom Matrix bdiag nearPD
 #' @importFrom optimx optimx
 #' @importFrom Formula Formula as.Formula
-#' @importFrom mvtnorm rmvnorm
+#' @importFrom mvtnorm rmvnorm ldmvnorm sldmvnorm ltMatrices
 
 
 
@@ -88,7 +88,6 @@ mvordnorm <- function(formula, data,
   ## evaluate model.frame
   mf[[1L]] <- as.name("model.frame")
   mf <- eval(mf, parent.frame())
-
   ## extract terms, model matrix, model response
   mt <- attr(mf, "terms")
   # mtX <- terms(formula, data = data, rhs = 1L)
@@ -200,10 +199,10 @@ summary.mvordnorm <- function(object, call = FALSE, ...)
                            c("logLik", round(-object$res$value,2)))
    pars <- object$parameters
    cf <- unlist(object$parameters)
-   vcovmat <- object$H.inv %*% object$V %*% object$H.inv
-   if (is.null(vcovmat)) {
+   if (is.null(object$H.inv)) {
      se <- NA
    } else {
+     vcovmat <- object$H.inv %*% object$V %*% object$H.inv
      se <- sqrt(diag(vcovmat))
    }
    cf <- cbind(cf, se, cf/se, 2 * pnorm(-abs(cf/se)))
@@ -285,14 +284,17 @@ print.summary.mvordnorm <- function(summary.output, ...){
 # #'  i.e., by substracting the mean and dividing by the standard deviation.
 #' @param se logical, indicating whether standard errors should be calculated.
 #' @param solver name of solver to be used by optimx.
+#' @param usegrfun logical indicating whether the gradient should be used in optimx.
+#' @param type_composite_log_lik type of composite likelihood approach. "type_1" corresponds to pairwise likelihood."type_2" considers the full likelihood of the normals, pairwise likelihoods of the ordinal variables and the likelihood of each ordinal conditional on all normal variables. Note that for type 2 numeric standard error are computed with numDeriv.
 #' @export
-mvordnorm.control <- function(se = TRUE, solver = "CG", usegrfun = FALSE) {
-#   if (is.null(solver.nlminb.control$eval.max)) solver.nlminb.control$eval.max <- 10000
-#   if (is.null(solver.nlminb.control$iter.max)) solver.nlminb.control$iter.max <- 5000
-#   if (is.null(solver.nlminb.control$trace)) solver.nlminb.control$trace <- 0
+mvordnorm.control <- function(se = TRUE, solver = "CG", usegrfun = FALSE,
+                              type_composite_log_lik = c("type_1","type_2")) {
+  type_composite_log_lik <- match.arg(type_composite_log_lik)
   list(se = se,
        solver = solver,
-       usegrfun = usegrfun)
+       usegrfun = usegrfun,
+       type_composite_log_lik = type_composite_log_lik
+       )
 
 }
 #' @title vcov of Multivariate Models with Ordinal and Gaussian Responses.
