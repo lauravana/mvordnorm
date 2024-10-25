@@ -1,12 +1,11 @@
 ---
-title: "An R package for estimating a joint model of correlated ordinal and continuous variables"
-author: "Laura Vana and Rainer Hirk"
+title: "**mvordnorm**: An R package for estimating a joint model of correlated ordinal and continuous variables"
 output: rmarkdown::html_vignette
+bibliography: mvordnorm.bib
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{mvordnorm}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
-bibliography: mvordnorm.bib
 ---
 
 ```{r, include = FALSE}
@@ -15,6 +14,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 ```
+
 
 # Introduction
 
@@ -38,25 +38,26 @@ have $q_n$ continuous responses and $q_o$ ordinal responses (in total $q=q_n+q_o
 For the continuous responses $\boldsymbol y^n_{1},\ldots, \boldsymbol y^n_{q_n}$ 
 we assume the following regression model: 
 $$
-y^n_{ij} = \beta_{0j} + \bm\beta_j^\top \bm x_i + \sigma_j \epsilon^n_{ij}
+y^n_{ij} = \beta_{0j} + \beta_j^\top  x_i + \sigma_j \epsilon^n_{ij}
 $$
 for all observations $i=1,\ldots,n$ and $j=1,\ldots,q_n$ where 
-$\bm x_i$ is a $(p\times 1)$ vector of covariates, $\bm\beta_j$ is a $(p\times 1)$ vector of response-specific regression coefficients, $\sigma_j$ is a response-specific scale parameter and $\epsilon^n_{ij}$ is a mean-zero error term.
+$x_i$ is a $(p\times 1)$ vector of covariates, $\beta_j$ is a $(p\times 1)$ vector of response-specific regression coefficients, $\sigma_j$ is a response-specific scale parameter and $\epsilon^n_{ij}$ is a mean-zero error term.
 
-For the ordinal variables  $\boldsymbol y^o_{1},\ldots, \boldsymbol y^o_{q_o}$ a regression model is assumed on the latent variable $\tilde{\bm y}$ underlying the ordinal observations:
+For the ordinal variables  $\boldsymbol y^o_{1},\ldots, \boldsymbol y^o_{q_o}$ a regression model is assumed on the latent variable 
+$\widetilde{y}$ underlying the ordinal observations:
 $$
-\tilde y^o_{ij} =\bm \beta_j^\top \bm x_i + \epsilon^o_{ij},
+\widetilde{y}^o_{ij} = \boldsymbol\beta_j^\top  \boldsymbol x_i + \epsilon^o_{ij},
 $$
 where the observed responses are obtained by slotting the continuous latent variables using appropriate threshold parameters.
 $$
-y^o_{ij} = r \Rightarrow \theta_{j, r-1}\leq \tilde y^o_{ij}\leq \theta_{j, r}, \quad r\in \{1, \ldots, K_j\} \quad  -\infty\equiv\theta_{j, 0} <\theta_{j, 1}<\ldots<\theta_{j, K}\equiv \infty,
+y^o_{ij} = r \Rightarrow \theta_{j, r-1}\leq \widetilde{y}^o_{ij}\leq \theta_{j, r}, \quad r\in \{1, \ldots, K_j\} \quad  -\infty\equiv\theta_{j, 0} <\theta_{j, 1}<\ldots<\theta_{j, K}\equiv \infty,
 $$
 where $K_j$ denotes the number of categories for ordinal response $j=1, \ldots, q_o$.
 
 The dependence is captured by assuming that the errors of the continuous and the latent variables
 of the ordinals come from a multivariate normal distribution:
 $$
-(\boldsymbol\epsilon^o_{i}, \boldsymbol\epsilon^n_{ij})^\top \sim N(\bm 0, R)
+(\boldsymbol\epsilon^o_{i}, \boldsymbol\epsilon^n_{i})^\top \sim N(\boldsymbol 0, R)
 $$
 with mean zero and correlation matrix $R$. Note that the matrix is restricted to have diagonal elements equal to one due to identifiability restrictions for the ordinal variables.
 
@@ -81,7 +82,7 @@ a bivariate normal distribution
 
 * Case 3: one response is ordinal, one normal the likelihood is a normal probability
 which takes into account the conditional distribution of
-$\tilde y^o_{k}$ given $y^n_{l}$, which are jointly normal.
+$\widetilde y^o_{k}$ given $y^n_{l}$, which are jointly normal.
 
 
 ## Three-part composite likelihood 
@@ -107,13 +108,19 @@ of the pairwise log-likelihood, we consider all
 pairs of *observed responses*. In case for some observations only one response is 
 available, we consider the likelihood of the univariate observed response.
 For the continuous responses this is the standard normal pdf 
-$\phi\left(\frac{y^n_{ik} - \beta_{0k} -\bm\beta_k^\top \bm x_i}{\sigma_l} \right)$ while for the ordinal 
+$\phi\left(\frac{y^n_{ik} - \beta_{0k} -\beta_k^\top  x_i}{\sigma_l} \right)$ while for the ordinal 
 responses we have the univariate probability 
 $\Pr(y_{ik}=r_{ik})=\Phi(U_{i,k}) - \Phi(L_{i,k})$.
 
 # Software implementation {#sect:soft}
 
 The model is implemented in package **mvordnorm**.
+
+```{r setup}
+library(mvordnorm)
+```
+
+
 The main function for fitting the models is `mvordnorm()`.
 ```{r eval=FALSE}
 mvordnorm(formula, data, response_types = NULL, na.action,
@@ -200,4 +207,3 @@ This research was supported by funds of the Oesterreichischen Nationalbank
 
 # References
 <div id="refs"></div>
-

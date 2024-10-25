@@ -149,11 +149,12 @@ mvordnorm <- function(formula, data,
 #' @title Print Method for class mvordnorm
 #' @description Prints regression coefficients, parameters of the error structure of class mvordnorm
 #' @param x object of class \code{'mvordnorm'}
-#' @param call displays function call if \code{TRUE}
 #' @param ... further arguments passed to or from other methods.
-#' @method print mvordnorm
+#' @param call displays function call if \code{TRUE}
+#'
+#' @rdname print.mvordnorm
 #' @export
-print.mvordnorm <- function(x, call = FALSE, ...) {
+print.mvordnorm <- function(x, ..., call = FALSE) {
    if(call){
      cat("\nCall:\n",
          paste(deparse(x$call), sep = "\n", collapse = "\n"), "\n\n", sep = "")
@@ -252,29 +253,35 @@ summary.mvordnorm <- function(object, call = FALSE, ...)
 
 }
 
+#' @title Print method for summary of mvordnorm
+#' @description Summary of thresholds, regression coefficients
+#' and parameters of the error structure of class \code{'mvordnorm'}.
+#' @param x object of class \code{'summary.mvordnorm'}
+#' @param digits number of digits in output
+#' @param ... further arguments passed to or from other methods.
 #' @export
-print.summary.mvordnorm <- function(summary.output, ...){
+print.summary.mvordnorm <- function(x, digits = max(1L, getOption("digits") - 3L), ...){
    cat("Formula: ")
-   print(summary.output$formula, ...)
+   print(x$formula, ...)
    cat("\n")
-   write.table(summary.output$info, row.names = FALSE, col.names = FALSE, quote = FALSE)
+   write.table(x$info, row.names = FALSE, col.names = FALSE, quote = FALSE)
 
    cat("\nThresholds:\n")
-   print(summary.output$thresholds)
+   print(x$thresholds)
    ## ------------------------
    cat("\nIntercept for normals \n")
-   print(summary.output$intercepts)
+   print(x$intercepts)
    ## ------------------------
    cat("\nCoefficients:\n")
-   print(summary.output$coefficients)
+   print(x$coefficients)
 
    #---------------------------------------
    cat("\nStandard deviation of the Gaussian response variables:\n")
-   print(summary.output$sigmas)
+   print(x$sigmas)
 
    #   ## ------------------------------
    cat("\nCorrelation params:\n")
-   print(summary.output$corrpars)
+   print(x$corrpars)
 }
 
 #' @title Control function for mvordnorm()

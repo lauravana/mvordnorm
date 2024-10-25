@@ -18,6 +18,9 @@ License: GPL-3
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.1
+VignetteBuilder: knitr
+URL: https://github.com/lauravana/mvordnorm
+BugReports: https://github.com/lauravana/mvordnorm/issues
 Depends:
     R (>= 3.5.0)
 Imports: 
@@ -28,3 +31,6 @@ Imports:
     Matrix,
     Formula,
     mvtnorm
+Suggests: 
+    knitr,
+    rmarkdown

@@ -4,14 +4,14 @@
 \alias{print.mvordnorm}
 \title{Print Method for class mvordnorm}
 \usage{
-\method{print}{mvordnorm}(x, call = FALSE, ...)
+\method{print}{mvordnorm}(x, ..., call = FALSE)
 }
 \arguments{
 \item{x}{object of class \code{'mvordnorm'}}
 
-\item{call}{displays function call if \code{TRUE}}
-
 \item{...}{further arguments passed to or from other methods.}
+
+\item{call}{displays function call if \code{TRUE}}
 }
 \description{
 Prints regression coefficients, parameters of the error structure of class mvordnorm
