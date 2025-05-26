@@ -80,7 +80,7 @@ mvordnorm_fit <- function(y, X, # w,  offset,
 
 
   obj <- list()
-  obj$res <- optimx(start_values, function(par) neg_log_lik_joint(par, response_types,
+  obj$res <- optim(start_values, function(par) neg_log_lik_joint(par, response_types,
                       y, X, ntheta, p, ndimo, ndimn, ndim,
                       idn, ido, ind_univ, combis_fast),
     gr = grfun,
@@ -109,7 +109,8 @@ mvordnorm_fit <- function(y, X, # w,  offset,
   #     method = control$solver), times = 1L)
 
   obj$objective <- obj$res[["value"]]
-  obj$parOpt <- unlist(obj$res[seq_along(start_values)])
+  # obj$parOpt <- unlist(obj$res[seq_along(start_values)])
+  obj$parOpt <- unlist(obj$res$par[seq_along(start_values)])
   obj$combis_fast <- combis_fast
 
   # Finalize ----
