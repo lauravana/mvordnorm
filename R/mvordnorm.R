@@ -294,11 +294,15 @@ print.summary.mvordnorm <- function(x, digits = max(1L, getOption("digits") - 3L
 #' @param usegrfun logical indicating whether the gradient should be used in optimx.
 #' @param type_composite_log_lik type of composite likelihood approach. "type_1" corresponds to pairwise likelihood."type_2" considers the full likelihood of the normals, pairwise likelihoods of the ordinal variables and the likelihood of each ordinal conditional on all normal variables. Note that for type 2 numeric standard error are computed with numDeriv.
 #' @export
-mvordnorm.control <- function(se = TRUE, solver = "CG", usegrfun = FALSE,
+mvordnorm.control <- function(se = TRUE, solver = "CG",
+                              solver.control = list(maxit = 1000,
+                                                    trace = 0),
+                              usegrfun = FALSE,
                               type_composite_log_lik = c("type_1","type_2")) {
   type_composite_log_lik <- match.arg(type_composite_log_lik)
   list(se = se,
        solver = solver,
+       solver.control = solver.control,
        usegrfun = usegrfun,
        type_composite_log_lik = type_composite_log_lik
        )

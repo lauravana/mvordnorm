@@ -80,11 +80,14 @@ mvordnorm_fit <- function(y, X, # w,  offset,
 
 
   obj <- list()
-  obj$res <- optim(start_values, function(par) neg_log_lik_joint(par, response_types,
+  obj$res <- optim(start_values, function(par)
+    neg_log_lik_joint(par, response_types,
                       y, X, ntheta, p, ndimo, ndimn, ndim,
                       idn, ido, ind_univ, combis_fast),
     gr = grfun,
-    method = control$solver)
+    method = control$solver,
+    control = control$solver.control
+  )
 
   # grfun(par = fit2$parOpt)
   # dnum<-numDeriv::grad(function(par) neg_log_lik_joint(par, response_types,
@@ -168,7 +171,9 @@ mvordnorm_fit <- function(y, X, # w,  offset,
       jac_dttheta_dtheta_flexible(thetas,
                                   ndimo = ndimo, ntheta = ntheta)
     Jsd <- 1/sigman
-    Jcor <- jac_dtr_dr(rvec, ndim)
+    # Jcor <- jac_dtr_dr(rvec, ndim)
+    Jcor <- numDeriv::jacobian(function(x) tr_r_function(x, ndim),
+                               x = rvec)
 
     jacobian_neg_log_lik <- as.matrix(Matrix::bdiag(
       c(jthetas,

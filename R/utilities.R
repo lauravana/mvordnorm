@@ -81,11 +81,14 @@ jac_dtheta_dttheta_flexible <- function(ttheta, ndimo, ntheta) {
 
 }
 
-tr_r_function <- function(rvec, ndim, i) {
+tr_r_function <- function(rvec, ndim) {
   R <- diag(ndim)
   R[lower.tri(R)] <- rvec
   R[upper.tri(R)] <- t(R)[upper.tri(R)]
-  l <- t(chol(R))
+  chR <- chol(R) # tryCatch(chol(R), error = function(e) {
+  #  chol(Matrix::nearPD(R, corr = TRUE, keepDiag = TRUE)$mat)
+  #})
+  l <- t(chR)
   angmat <- diag(ndim)
 
   angmat[-1,1] <- acos(l[-1,1])
@@ -97,7 +100,7 @@ tr_r_function <- function(rvec, ndim, i) {
   }
   angdivpi <- angmat[lower.tri(angmat)]/pi
 
-  log(angdivpi/(1-angdivpi))[i]
+  log(angdivpi/(1-angdivpi))
 }
 
 r_tr_function <- function(tpar, ndim, i) {
@@ -133,12 +136,12 @@ jac_dr_dtr <- function(tpar, ndim){
                    x=tpar)))
 }
 
-
-jac_dtr_dr <- function(rvec, ndim){
- t(sapply(seq_along(rvec), function(i)
-    numDeriv::grad(function(x) tr_r_function(x, ndim, i),
-                                          x=rvec)))
-}
+#
+# jac_dtr_dr <- function(rvec, ndim){
+#  t(sapply(seq_along(rvec), function(i)
+#     numDeriv::grad(function(x) tr_r_function(x, ndim),
+#                                           x=rvec)))
+# }
 
 get_labels_theta <- function(yj, nthetaj) {
   lev <- 1:length(unique(yj)) # TODO

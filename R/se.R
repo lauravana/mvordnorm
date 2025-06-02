@@ -650,3 +650,4 @@ grad_neg_log_lik_joint_type_2 <- function(pars, response_types,
                                                                      ind_univ,
                                                                      combis_fast)))
 }
+
